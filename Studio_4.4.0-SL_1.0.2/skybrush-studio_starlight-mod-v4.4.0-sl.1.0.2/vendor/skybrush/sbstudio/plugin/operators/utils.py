@@ -1,0 +1,605 @@
+
+
+import logging
+from collections.abc import Callable
+from itertools import groupby
+from math import degrees
+from operator import attrgetter
+from pathlib import Path
+from typing import Any, cast
+
+from bpy.path import basename
+from bpy.types import Context
+from natsort import natsorted
+
+from sbstudio.api.base import SkybrushStudioAPI
+from sbstudio.model.file_formats import FileFormat
+from sbstudio.model.light_program import LightProgram
+from sbstudio.model.location import ShowLocation
+from sbstudio.model.safety_check import SafetyCheckParams
+from sbstudio.model.trajectory import Trajectory
+from sbstudio.model.yaw import YawSetpointList
+from sbstudio.plugin.constants import Collections
+from sbstudio.plugin.errors import SkybrushStudioExportWarning
+from sbstudio.plugin.model.storyboard import (
+    StoryboardEntry,
+    StoryboardEntryPurpose,
+    get_storyboard,
+)
+from sbstudio.plugin.props.frame_range import resolve_frame_range
+from sbstudio.plugin.tasks.light_effects import suspended_light_effects
+from sbstudio.plugin.tasks.safety_check import suspended_safety_checks
+from sbstudio.plugin.utils import with_context
+from sbstudio.plugin.utils.cameras import get_cameras_from_context
+from sbstudio.plugin.utils.gps_coordinates import parse_latitude, parse_longitude
+from sbstudio.plugin.utils.progress import FrameProgressReport
+from sbstudio.plugin.utils.pyro_markers import get_pyro_markers_of_object
+from sbstudio.plugin.utils.sampling import (
+    frame_range,
+    sample_colors_of_objects,
+    sample_positions_and_colors_of_objects,
+    sample_positions_and_yaw_of_objects,
+    sample_positions_colors_and_yaw_of_objects,
+    sample_positions_of_objects,
+)
+from sbstudio.plugin.utils.time_markers import get_time_markers_from_context
+from sbstudio.utils import get_ends
+
+__all__ = (
+    "export_show_to_file_using_api",
+    "get_drones_to_export",
+    "get_show_location",
+)
+
+
+log = logging.getLogger(__name__)
+
+
+class _default_settings:
+    output_fps: int = 4
+    light_output_fps: int = 4
+    redraw: bool | None = None
+
+
+
+
+
+
+def export_show_to_file_using_api(
+    api: SkybrushStudioAPI,
+    context: Context,
+    settings: dict[str, Any],
+    filepath: str | Path,
+    format: FileFormat,
+) -> None:
+    
+
+    log.info(f"Exporting show content to {filepath}")
+
+    
+    log.info(f"Getting frame range from {settings.get('frame_range')}")
+    frame_range = _get_frame_range_from_export_settings(settings, context=context)
+    if frame_range is None:
+        raise SkybrushStudioExportWarning("Selected frame range is empty")
+
+    
+    export_selected_only: bool = settings.get("export_selected", False)
+    drones = list(get_drones_to_export(selected_only=export_selected_only))
+    if not drones:
+        if export_selected_only:
+            raise SkybrushStudioExportWarning(
+                "No objects were selected; export cancelled"
+            )
+        else:
+            raise SkybrushStudioExportWarning(
+                "There are no objects to export; export cancelled"
+            )
+
+    
+    use_yaw_control: bool = settings.get("use_yaw_control", False)
+
+    
+    if use_yaw_control:
+        log.info("Getting object trajectories, light programs and yaw setpoints")
+        (
+            trajectories,
+            lights,
+            yaw_setpoints,
+        ) = _get_trajectories_lights_and_yaw_setpoints(
+            drones,
+            settings,
+            frame_range,
+            context=context,
+            progress=_show_progress_during_export,
+        )
+    else:
+        log.info("Getting object trajectories and light programs")
+        (
+            trajectories,
+            lights,
+        ) = _get_trajectories_and_lights(
+            drones,
+            settings,
+            frame_range,
+            context=context,
+            progress=_show_progress_during_export,
+        )
+        yaw_setpoints = None
+
+    
+    use_pyro_control: bool = settings.get("use_pyro_control", False)
+
+    if use_pyro_control:
+        pyro_programs = {
+            drone.name: get_pyro_markers_of_object(drone) for drone in drones
+        }
+    else:
+        pyro_programs = None
+
+    
+    show_title = str(basename(filepath).split(".")[0])
+
+    
+    scene_settings = getattr(context.scene.skybrush, "settings", None)
+    show_type = (scene_settings.show_type if scene_settings else "OUTDOOR").lower()
+    show_location = get_show_location(context)
+
+    
+    time_markers = get_time_markers_from_context(context)
+
+    
+    export_cameras = settings.get("export_cameras", False)
+    if export_cameras:
+        cameras = get_cameras_from_context(context)
+    else:
+        cameras = None
+
+    
+    safety_check = getattr(context.scene.skybrush, "safety_check", None)
+    validation = SafetyCheckParams(
+        max_velocity_xy=(
+            safety_check.velocity_xy_warning_threshold if safety_check else 8
+        ),
+        max_velocity_z=safety_check.velocity_z_warning_threshold if safety_check else 2,
+        max_velocity_z_up=(
+            safety_check.velocity_z_warning_threshold_up_or_none
+            if safety_check
+            else None
+        ),
+        max_acceleration=(
+            safety_check.acceleration_warning_threshold if safety_check else 4
+        ),
+        max_yaw_rate=safety_check.yaw_rate_warning_threshold if safety_check else 30,
+        max_altitude=safety_check.altitude_warning_threshold if safety_check else 150,
+        min_distance=safety_check.proximity_warning_threshold if safety_check else 3,
+    )
+
+    
+    show_segments = _get_segments(context=context)
+
+    
+    
+    delta = -frame_range[0] / context.scene.render.fps
+    if delta != 0:
+        for trajectory in trajectories.values():
+            trajectory.shift_time_in_place(delta)
+        for light_program in lights.values():
+            light_program.shift_time_in_place(delta)
+        if pyro_programs:
+            for pyro_program in pyro_programs.values():
+                pyro_program.shift_time_in_place(-frame_range[0])
+        if yaw_setpoints:
+            for yaw_setpoint in yaw_setpoints.values():
+                yaw_setpoint.shift_time_in_place(delta)
+        time_markers.shift_time_in_place(delta)
+        show_segments = {
+            k: (v[0] + delta, v[1] + delta) for k, v in show_segments.items()
+        }
+
+    renderer_params = {}
+
+    
+    if format is FileFormat.SKYC:
+        log.info("Exporting show to Skybrush .skyc format")
+        renderer = "skyc"
+    elif format is FileFormat.PDF:
+        log.info("Exporting validation plots to .pdf")
+        renderer = "plot"
+        plots = settings.get("plots", ["stats", "pos", "vel", "drift", "nn"])
+        fps = settings.get("output_fps", _default_settings.output_fps)
+        renderer_params = {"plots": ",".join(plots), "fps": fps, "single_file": True}
+    elif format is FileFormat.SKYC_AND_PDF:
+        log.info("Exporting show to .skyc and .pdf formats")
+        plots = settings.get("plots", ["stats", "pos", "vel", "drift", "nn"])
+        fps = settings.get("output_fps", _default_settings.output_fps)
+        renderer = ["skyc", "plot"]
+        renderer_params = [
+            None,
+            {"plots": ",".join(plots), "fps": fps, "single_file": True},
+        ]
+    elif format is FileFormat.CSV:
+        log.info("Exporting show to Skybrush .csv format")
+        renderer = "csv"
+        renderer_params = {
+            "fps": settings["output_fps"],
+        }
+    elif format is FileFormat.DAC:
+        log.info("Exporting show to HG .dac format")
+        renderer = "dac"
+        renderer_params = {
+            "show_id": 1555,
+            "title": "Skybrush show",
+            "model": settings["drone_model"],
+            "gcs": settings["gcs_type"],
+        }
+    elif format is FileFormat.DDSF:
+        log.info("Exporting show to Depence .ddsf format")
+        renderer = "ddsf"
+        renderer_params = {
+            "fps": settings["output_fps"],
+            "light_fps": settings["light_output_fps"],
+        }
+    elif format is FileFormat.DROTEK:
+        log.info("Exporting show to Drotek .json format")
+        renderer = "drotek"
+        renderer_params = {
+            "fps": settings["output_fps"],
+            
+        }
+    elif format is FileFormat.DSS:
+        log.info("Exporting show to DSS .path format")
+        renderer = "dss"
+    elif format is FileFormat.DSS3:
+        log.info("Exporting show to DSS .path3 format")
+        renderer = "dss3"
+        renderer_params = {
+            "fps": settings["output_fps"],
+            "light_fps": settings["light_output_fps"],
+        }
+    elif format is FileFormat.EVSKY:
+        log.info("Exporting show to EVSKY .essp format")
+        renderer = "evsky"
+        renderer_params = {
+            "fps": settings["output_fps"],
+            "light_fps": settings["light_output_fps"],
+        }
+    elif format is FileFormat.FINALE_CSV:
+        log.info("Exporting show to Finale 3D Do-It-Yourself .csv format")
+        renderer = "finale-csv"
+        renderer_params = {
+            "fps": settings["output_fps"],
+            "light_fps": settings["light_output_fps"],
+        }
+    elif format is FileFormat.KMZ:
+        log.info("Exporting show to Google Earth .kmz format")
+        renderer = "kmz"
+        renderer_params = {
+            "fps": settings["output_fps"],
+            "export_mode": str(settings["export_mode"]).lower(),
+        }
+    elif format is FileFormat.LITEBEE:
+        log.info("Exporting show to Litebee .bin format")
+        renderer = "litebee"
+    elif format is FileFormat.VVIZ:
+        log.info("Exporting show to Finale 3D .vviz format")
+        renderer = "vviz"
+        renderer_params = {
+            "fps": settings["output_fps"],
+            "light_fps": settings["light_output_fps"],
+            "time_offset": settings["time_offset"],
+        }
+    else:
+        raise RuntimeError(f"Unhandled format: {format!r}")
+
+    api.export(
+        show_title=show_title,
+        show_type=show_type,
+        show_location=show_location,
+        show_segments=show_segments,
+        validation=validation,
+        trajectories=trajectories,
+        lights=lights,
+        pyro_programs=pyro_programs,
+        yaw_setpoints=yaw_setpoints,
+        output=filepath,
+        time_markers=time_markers,
+        cameras=cameras,
+        renderer=renderer,
+        renderer_params=renderer_params,
+    )
+
+    log.info("Export finished")
+
+
+def get_drones_to_export(selected_only: bool = False):
+    
+    drone_collection = Collections.find_drones(create=False)
+    if not drone_collection:
+        return []
+
+    to_export = [
+        drone
+        for drone in drone_collection.objects
+        if not selected_only or drone.select_get()
+    ]
+
+    return natsorted(to_export, key=attrgetter("name"))
+
+
+def get_show_location(context: Context) -> ShowLocation | None:
+    
+    scene_settings = getattr(context.scene.skybrush, "settings", None)
+
+    return (
+        ShowLocation(
+            latitude=parse_latitude(scene_settings.latitude_of_show_origin),
+            longitude=parse_longitude(scene_settings.longitude_of_show_origin),
+            orientation=degrees(scene_settings.show_orientation),
+        )
+        if scene_settings and scene_settings.use_show_origin_and_orientation
+        else None
+    )
+
+
+
+
+
+
+@with_context
+def _get_frame_range_from_export_settings(
+    settings, *, context: Context | None = None
+) -> tuple[int, int] | None:
+    
+    return resolve_frame_range(settings["frame_range"], context=context)
+
+
+@with_context
+def _get_segments(context: Context | None = None) -> dict[str, tuple[float, float]]:
+    
+    assert context is not None
+    result: dict[str, tuple[float, float]] = {}
+    storyboard = get_storyboard(context=context)
+    fps = context.scene.render.fps
+
+    entry_purpose_groups = groupby(storyboard.entries, lambda e: cast(str, e.purpose))
+
+    takeoff_entries: list[StoryboardEntry] | None = None
+    show_entries: list[StoryboardEntry] | None = None
+    landing_entries: list[StoryboardEntry] | None = None
+    show_valid = True
+    for purpose, entries in entry_purpose_groups:
+        if purpose == StoryboardEntryPurpose.UNSPECIFIED.name:
+            show_valid = False
+            break
+        elif purpose == StoryboardEntryPurpose.TAKEOFF.name:
+            if not (show_entries is None and landing_entries is None):
+                show_valid = False
+                break
+
+            takeoff_entries = list(entries)
+        elif purpose == StoryboardEntryPurpose.SHOW.name:
+            if landing_entries is not None:
+                show_valid = False
+                break
+
+            show_entries = list(entries)
+        elif purpose == StoryboardEntryPurpose.LANDING.name:
+            landing_entries = list(entries)
+
+    if show_valid:
+        if ends := get_ends(takeoff_entries):
+            result["takeoff"] = (ends[0].frame_start / fps, ends[1].frame_end / fps)
+        if ends := get_ends(show_entries):
+            result["show"] = (ends[0].frame_start / fps, ends[1].frame_end / fps)
+        if ends := get_ends(landing_entries):
+            result["landing"] = (ends[0].frame_start / fps, ends[1].frame_end / fps)
+    elif (
+        takeoff_entries is not None
+        or show_entries is not None
+        or landing_entries is not None
+    ):
+        log.warning("Show segments are invalid!")
+
+    return result
+
+
+@with_context
+def _get_trajectories_and_lights(
+    drones,
+    settings: dict[str, Any],
+    bounds: tuple[int, int],
+    *,
+    context: Context | None = None,
+    progress: Callable[[FrameProgressReport], None] | None = None,
+) -> tuple[dict[str, Trajectory], dict[str, LightProgram]]:
+    
+    trajectory_fps = settings.get("output_fps", _default_settings.output_fps)
+    light_fps = settings.get("light_output_fps", _default_settings.light_output_fps)
+    redraw = settings.get("redraw", _default_settings.redraw)
+
+    if redraw is None:
+        
+        
+        assert context is not None
+        redraw = any(
+            effect.is_animated
+            for effect in context.scene.skybrush.light_effects.entries
+        )
+
+    trajectories: dict[str, Trajectory]
+    lights: dict[str, LightProgram]
+
+    if trajectory_fps == light_fps:
+        
+        range = frame_range(
+            bounds[0],
+            bounds[1],
+            fps=trajectory_fps,
+            context=context,
+            operation="Sampling trajectories and lights",
+            progress=progress,
+        )
+        with suspended_safety_checks():
+            result = sample_positions_and_colors_of_objects(
+                drones,
+                range,
+                context=context,
+                by_name=True,
+                redraw=redraw,
+                simplify=True,
+            )
+
+        trajectories = {}
+        lights = {}
+
+        for key, (trajectory, light_program) in result.items():
+            trajectories[key] = trajectory
+            lights[key] = light_program
+
+    else:
+        
+        
+        with suspended_safety_checks():
+            range = frame_range(
+                bounds[0],
+                bounds[1],
+                fps=trajectory_fps,
+                context=context,
+                operation="Sampling trajectories",
+                progress=progress,
+            )
+            with suspended_light_effects():
+                trajectories = sample_positions_of_objects(
+                    drones,
+                    range,
+                    context=context,
+                    by_name=True,
+                    simplify=True,
+                )
+
+            range = frame_range(
+                bounds[0],
+                bounds[1],
+                fps=light_fps,
+                context=context,
+                operation="Sampling lights",
+                progress=progress,
+            )
+            lights = sample_colors_of_objects(
+                drones,
+                range,
+                context=context,
+                by_name=True,
+                redraw=redraw,
+                simplify=True,
+            )
+
+    return trajectories, lights
+
+
+@with_context
+def _get_trajectories_lights_and_yaw_setpoints(
+    drones,
+    settings: dict[str, Any],
+    bounds: tuple[int, int],
+    *,
+    context: Context | None = None,
+    progress: Callable[[FrameProgressReport], None] | None = None,
+) -> tuple[dict[str, Trajectory], dict[str, LightProgram], dict[str, YawSetpointList]]:
+    
+    trajectory_fps = settings.get("output_fps", _default_settings.output_fps)
+    light_fps = settings.get("light_output_fps", _default_settings.light_output_fps)
+    redraw = settings.get("redraw", _default_settings.redraw)
+
+    if redraw is None:
+        
+        
+        assert context is not None
+        redraw = any(
+            effect.is_animated
+            for effect in context.scene.skybrush.light_effects.entries
+        )
+
+    trajectories: dict[str, Trajectory]
+    lights: dict[str, LightProgram]
+    yaw_setpoints: dict[str, YawSetpointList]
+
+    if trajectory_fps == light_fps:
+        
+        with suspended_safety_checks():
+            range = frame_range(
+                bounds[0],
+                bounds[1],
+                fps=trajectory_fps,
+                context=context,
+                operation="Sampling trajectories, lights and yaw setpoints",
+                progress=progress,
+            )
+            result = sample_positions_colors_and_yaw_of_objects(
+                drones,
+                range,
+                context=context,
+                by_name=True,
+                redraw=redraw,
+                simplify=True,
+            )
+
+        trajectories = {}
+        lights = {}
+        yaw_setpoints = {}
+
+        for key, (trajectory, light_program, yaw_curve) in result.items():
+            trajectories[key] = trajectory
+            lights[key] = light_program
+            yaw_setpoints[key] = yaw_curve
+
+    else:
+        
+        
+        with suspended_safety_checks():
+            range = frame_range(
+                bounds[0],
+                bounds[1],
+                fps=trajectory_fps,
+                context=context,
+                operation="Sampling trajectories and yaw setpoints",
+                progress=progress,
+            )
+            with suspended_light_effects():
+                result = sample_positions_and_yaw_of_objects(
+                    drones,
+                    range,
+                    context=context,
+                    by_name=True,
+                    simplify=True,
+                )
+
+                trajectories = {}
+                yaw_setpoints = {}
+
+                for key, (trajectory, yaw_curve) in result.items():
+                    trajectories[key] = trajectory
+                    yaw_setpoints[key] = yaw_curve
+
+            range = frame_range(
+                bounds[0],
+                bounds[1],
+                fps=light_fps,
+                context=context,
+                operation="Sampling lights",
+                progress=progress,
+            )
+            lights = sample_colors_of_objects(
+                drones,
+                range,
+                context=context,
+                by_name=True,
+                redraw=redraw,
+                simplify=True,
+            )
+
+    return trajectories, lights, yaw_setpoints
+
+
+def _show_progress_during_export(progress: FrameProgressReport) -> None:
+    print(progress.format())

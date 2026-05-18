@@ -1,0 +1,167 @@
+from collections.abc import Callable
+from enum import IntEnum, auto
+
+from sbstudio.model.types import MutableRGBAColor, RGBAColor
+
+__all__ = ("blend_in_place", "BlendMode")
+
+
+class BlendMode(IntEnum):
+    NORMAL = auto()
+    MULTIPLY = auto()
+    SCREEN = auto()
+    DARKEN = auto()
+    LIGHTEN = auto()
+    OVERLAY = auto()
+    SOFT_LIGHT = auto()
+    HARD_LIGHT = auto()
+
+    
+    
+    
+    
+    
+
+    @property
+    def description(self) -> str:
+        return self.name.lower().replace("_", " ").capitalize()
+
+
+def _blend_normal(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    for i in range(3):
+        backdrop[i] = a * source[i] + b * backdrop[i]
+
+
+def _blend_multiply(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    for i in range(3):
+        backdrop[i] = a * backdrop[i] * source[i] + b * backdrop[i]
+
+
+def _blend_screen(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    for i in range(3):
+        backdrop[i] = a * (1 - (1 - backdrop[i]) * (1 - source[i])) + b * backdrop[i]
+
+
+def _blend_darken(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    for i in range(3):
+        backdrop[i] = a * min(backdrop[i], source[i]) + b * backdrop[i]
+
+
+def _blend_lighten(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    for i in range(3):
+        backdrop[i] = a * max(backdrop[i], source[i]) + b * backdrop[i]
+
+
+def _blend_overlay(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    for i in range(3):
+        if backdrop[i] >= 0.5:
+            backdrop[i] = (
+                a * (1 - (2 - 2 * backdrop[i]) * (1 - source[i])) + b * backdrop[i]
+            )
+        else:
+            backdrop[i] = a * (2 * backdrop[i]) * source[i] + b * backdrop[i]
+
+
+def _blend_hard_light(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    for i in range(3):
+        if source[i] <= 0.5:
+            backdrop[i] = a * backdrop[i] * (2 * source[i]) + b * backdrop[i]
+        else:
+            backdrop[i] = (
+                a * (1 - (1 - backdrop[i]) * (2 - 2 * source[i])) + b * backdrop[i]
+            )
+
+
+def _blend_soft_light(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    
+    
+    
+    for i in range(3):
+        if source[i] <= 0.5:
+            backdrop[i] = (
+                a
+                * (backdrop[i] - (1 - 2 * source[i]) * backdrop[i] * (1 - backdrop[i]))
+                + b * backdrop[i]
+            )
+        else:
+            if backdrop[i] <= 0.25:
+                d = ((16 * backdrop[i] - 12) * backdrop[i] + 4) * backdrop[i]
+            else:
+                d = backdrop[i] ** 0.5
+            backdrop[i] = (
+                a * (backdrop[i] + (2 * source[i] - 1) * (d - backdrop[i]))
+                + b * backdrop[i]
+            )
+
+
+def _blend_nop(
+    source: RGBAColor, backdrop: MutableRGBAColor, a: float, b: float
+) -> None:
+    pass
+
+
+_blend_funcs: list[Callable[[RGBAColor, MutableRGBAColor, float, float], None]] = [
+    _blend_nop,
+    _blend_normal,
+    _blend_multiply,
+    _blend_screen,
+    _blend_darken,
+    _blend_lighten,
+    _blend_overlay,
+    _blend_soft_light,
+    _blend_hard_light,
+]
+
+
+if len(_blend_funcs) != len(BlendMode) + 1:
+    raise RuntimeError("one or more blend modes are unimplemented")
+
+
+def blend_in_place(
+    source: RGBAColor,
+    backdrop: MutableRGBAColor,
+    mode: BlendMode = BlendMode.NORMAL,
+) -> None:
+    
+    alpha_source = source[3]
+
+    if alpha_source <= 0:
+        
+        return
+
+    
+
+    if alpha_source >= 1 and mode is BlendMode.NORMAL:
+        
+        
+        backdrop[:] = source
+        return
+
+    alpha_backdrop = backdrop[3]
+
+    if alpha_backdrop >= 1:
+        alpha_overlay = 1
+        a = alpha_source
+    else:
+        alpha_overlay = 1 - (1 - alpha_source) * (1 - alpha_backdrop)
+        a = alpha_source / alpha_overlay
+
+    blend = _blend_funcs[mode]
+    blend(source, backdrop, a, 1 - a)
+    backdrop[3] = alpha_overlay

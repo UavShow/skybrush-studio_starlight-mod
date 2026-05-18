@@ -33,7 +33,7 @@
   <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/5灯光预设.jpg" width="400" alt="Takeoff Dialog">
 </p>
 <p align="center">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/6.jpg" width="810" alt="Main Interface View">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/1封面.jpg" width="810" alt="Main Interface View">
 </p>
 
 ---
@@ -76,9 +76,13 @@ Enhanced Blender plugin based on official [Studio 4.4.0](https://github.com/skyb
 
 ## 🛑 免责声明 / Disclaimer
 
-1. 本插件严格基于 skybrush-studio 开源框架进行修改，本插件无任何破解行为。This plugin is strictly based on the Skybrush-studio open-source framework and does not contain any cracking techniques.Features requiring Pro/Pro X licenses still require valid licensing.
+1. 本插件严格基于 skybrush-studio 开源框架进行修改，本插件无任何破解行为。
+   This plugin is strictly based on the Skybrush-studio open-source framework and does not contain any cracking techniques.
+   Features requiring Pro/Pro X licenses still require valid licensing.
 2. 开发者并非专业程序员，投入了一周时间与约 $100 AI 算力构建。希望官方能合并此功能。
-The developer is not a professional programmer; they spent a week and approximately $100 in AI computing power building this feature. They hope the official team can merge this functionality.
+   The developer is not a professional programmer;
+   they spent a week and approximately $100 in AI computing power building this feature.
+   They hope the official team can merge this functionality.
 
 ## 🛠️ 安装 / Installation
 

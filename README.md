@@ -11,7 +11,8 @@
 ## 简体中文
 
 `skybrush-studio_starlight-mod` 是根据官方 [Studio 4.4.0](https://github.com/skybrush-io/studio-blender) 发行版本进行二次修改的 Blender 插件增强版。
-
+推荐Blender版本号4.5.3或更高版本
+Blender version 4.5.3 or higher is recommended.
 ### ✨ 核心特性
 
 * **智能化起飞网格**：重构了创建方法，界面更直观，完美兼容单机阵列与箱式阵列。

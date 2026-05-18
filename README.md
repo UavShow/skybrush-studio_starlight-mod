@@ -25,15 +25,15 @@
 ### 📸 功能截图 (Screenshots)
 
 <p align="center">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/7.jpg" width="400" alt="Effect Editors">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/8.jpg" width="400" alt="Box Parameters">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/2.jpg" width="400" alt="Effect Editors">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/3.jpg" width="400" alt="Box Parameters">
 </p>
 <p align="center">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/9.jpg" width="400" alt="Batch Takeoff">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/10.jpg" width="400" alt="Takeoff Dialog">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/4.jpg" width="400" alt="Batch Takeoff">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/5.jpg" width="400" alt="Takeoff Dialog">
 </p>
 <p align="center">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/1.jpg" width="810" alt="Main Interface View">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/6.jpg" width="810" alt="Main Interface View">
 </p>
 
 ---

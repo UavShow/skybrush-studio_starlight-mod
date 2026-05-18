@@ -5,7 +5,7 @@
 ---
 
 <p align="center">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/1.jpg" width="800" alt="Skybrush Studio Starlight Mod Cover">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/1封面.jpg" width="800" alt="Skybrush Studio Starlight Mod Cover">
 </p>
 
 ## 简体中文
@@ -25,12 +25,12 @@
 ### 📸 功能截图 (Screenshots)
 
 <p align="center">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/2.jpg" width="400" alt="Effect Editors">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/3.jpg" width="400" alt="Box Parameters">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/2创建起飞网格.jpg" width="400" alt="Effect Editors">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/3创建分层起飞.jpg" width="400" alt="Box Parameters">
 </p>
 <p align="center">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/4.jpg" width="400" alt="Batch Takeoff">
-  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/5.jpg" width="400" alt="Takeoff Dialog">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/4灯光预设.jpg" width="400" alt="Batch Takeoff">
+  <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/5灯光预设.jpg" width="400" alt="Takeoff Dialog">
 </p>
 <p align="center">
   <img src="https://github.com/UavShow/skybrush-studio_starlight-mod/raw/main/Photo/6.jpg" width="810" alt="Main Interface View">

@@ -47,6 +47,7 @@ for candidate in candidates:
 # imports needed by the addon
 
 from sbstudio.i18n.translations import translations_dict
+from sbstudio.plugin import light_fx_presets as _light_fx_presets
 from sbstudio.plugin.lists import (
     SKYBRUSH_UL_lightfxlist,
     SKYBRUSH_UL_scheduleoverridelist,
@@ -339,6 +340,7 @@ def register():
     except Exception as e:
         print(f"Warning: Could not register box preset translations: {e}")
 
+    _light_fx_presets.register()
     register_state()
     for custom_type in types:
         register_type(custom_type)
@@ -379,6 +381,7 @@ def unregister():
     for custom_type in reversed(types):
         unregister_type(custom_type)
     unregister_state()
+    _light_fx_presets.unregister()
 
     # Unregister Box Preset translations
     try:

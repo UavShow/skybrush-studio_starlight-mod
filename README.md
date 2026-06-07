@@ -79,7 +79,7 @@ Enhanced Blender plugin based on official [Studio 4.4.0](https://github.com/skyb
 
 ## 🛑 免责声明 / Disclaimer
 
-1. 本插件严格基于 skybrush-studio 开源框架进行修改，本插件无任何破解行为。
+1. 本插件严格基于 skybrush-studio 开源框架进行修改，原本需要付费的专业版功能这个版本依旧需要付费，本插件无任何破解行为。
    This plugin is strictly based on the Skybrush-studio open-source framework and does not contain any cracking techniques.
    Features requiring Pro/Pro X licenses still require valid licensing.
 2. 开发者并非专业程序员，投入了一周时间与约 $100 AI 算力构建。希望官方能合并此功能。

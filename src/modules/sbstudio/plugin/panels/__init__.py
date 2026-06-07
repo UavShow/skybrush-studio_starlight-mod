@@ -1,4 +1,5 @@
 from .export import ExportPanel
+from .drone_max_tools import DroneMaxAnimationAssistancePanel
 from .formations import FormationsPanel
 from .led_control import LEDControlPanel
 from .light_effects import LightEffectsPanel
@@ -16,6 +17,7 @@ from .transition_editor import (
 
 __all__ = (
     "DroneShowAddonObjectPropertiesPanel",
+    "DroneMaxAnimationAssistancePanel",
     "ExportPanel",
     "FormationsPanel",
     "LEDControlPanel",

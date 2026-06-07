@@ -90,6 +90,17 @@ from sbstudio.plugin.operators import (
     DDSFExportOperator,
     DeselectFormationOperator,
     DetachMaterialsFromDroneTemplateOperator,
+    DroneMaxCreateNamedEmptyOperator,
+    DroneMaxGenerateEmptiesOperator,
+    DroneMaxGeneratePointsOperator,
+    DroneMaxImageFormationProperties,
+    DroneMaxNamedEmptyProperties,
+    DroneMaxSelectImageOperator,
+    DroneMaxSkycConvertAndImportOperator,
+    DroneMaxSkycImportProperties,
+    DroneMaxUIState,
+    DroneMaxVertsToEmptiesOperator,
+    DroneMaxVertsToEmptiesProperties,
     DrotekExportOperator,
     DSSPath3ExportOperator,
     DSSPathExportOperator,
@@ -144,9 +155,19 @@ from sbstudio.plugin.operators import (
     UseSelectedVertexGroupForFormationOperator,
     ValidateTrajectoriesOperator,
     VVIZExportOperator,
+    QuickIOBatchRenameOperator,
+    QuickIOCreateAndBakeProxiesOperator,
+    QuickIOExportKeyframesOperator,
+    QuickIOImportKeyframesOperator,
+    QuickIOPreviewOperator,
+    register_drone_max_scene_properties,
+    unregister_drone_max_scene_properties,
+    register_quick_io_scene_properties,
+    unregister_quick_io_scene_properties,
 )
 from sbstudio.plugin.panels import (
     DroneShowAddonObjectPropertiesPanel,
+    DroneMaxAnimationAssistancePanel,
     ExportPanel,
     FormationsPanel,
     LEDControlPanel,
@@ -206,6 +227,11 @@ types = (
     DroneShowAddonGlobalSettings,
     DroneShowAddonProperties,
     DroneShowAddonObjectProperties,
+    DroneMaxUIState,
+    DroneMaxImageFormationProperties,
+    DroneMaxNamedEmptyProperties,
+    DroneMaxVertsToEmptiesProperties,
+    DroneMaxSkycImportProperties,
 )
 """Custom types in this addon."""
 
@@ -280,6 +306,17 @@ operators = (
     RunFullProximityCheckOperator,
     RunAllMigrationOperators,
     SetupSceneOperator,
+    DroneMaxSelectImageOperator,
+    DroneMaxGeneratePointsOperator,
+    DroneMaxGenerateEmptiesOperator,
+    DroneMaxCreateNamedEmptyOperator,
+    DroneMaxVertsToEmptiesOperator,
+    DroneMaxSkycConvertAndImportOperator,
+    QuickIOExportKeyframesOperator,
+    QuickIOPreviewOperator,
+    QuickIOImportKeyframesOperator,
+    QuickIOCreateAndBakeProxiesOperator,
+    QuickIOBatchRenameOperator,
 )
 """Operators in this addon; operators that require other operators must come
 later in the list than their dependencies."""
@@ -304,6 +341,7 @@ panels = (
     PyroControlPanel,
     SafetyCheckPanel,
     ExportPanel,
+    DroneMaxAnimationAssistancePanel,
     DroneShowAddonObjectPropertiesPanel,
 )
 """Panels in this addon. The order also implicitly defines the order in which
@@ -344,6 +382,8 @@ def register():
     register_state()
     for custom_type in types:
         register_type(custom_type)
+    register_drone_max_scene_properties()
+    register_quick_io_scene_properties()
     for operator in operators:
         register_operator(operator)
     for list_ in lists:
@@ -378,6 +418,8 @@ def unregister():
         unregister_list(list_)
     for operator in reversed(operators):
         unregister_operator(operator)
+    unregister_quick_io_scene_properties()
+    unregister_drone_max_scene_properties()
     for custom_type in reversed(types):
         unregister_type(custom_type)
     unregister_state()

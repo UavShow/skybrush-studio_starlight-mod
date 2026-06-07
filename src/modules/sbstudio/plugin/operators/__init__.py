@@ -19,6 +19,21 @@ from .create_takeoff_grid import (
     SetDroneCoordOperator,
 )
 from .detach_materials_from_template import DetachMaterialsFromDroneTemplateOperator
+from .drone_max_tools import (
+    DroneMaxCreateNamedEmptyOperator,
+    DroneMaxGenerateEmptiesOperator,
+    DroneMaxGeneratePointsOperator,
+    DroneMaxImageFormationProperties,
+    DroneMaxNamedEmptyProperties,
+    DroneMaxSelectImageOperator,
+    DroneMaxSkycConvertAndImportOperator,
+    DroneMaxSkycImportProperties,
+    DroneMaxUIState,
+    DroneMaxVertsToEmptiesOperator,
+    DroneMaxVertsToEmptiesProperties,
+    register_drone_max_scene_properties,
+    unregister_drone_max_scene_properties,
+)
 from .duplicate_light_effect import DuplicateLightEffectOperator
 from .export_light_effects import ExportLightEffectsOperator
 from .export_to_csv import SkybrushCSVExportOperator
@@ -47,6 +62,15 @@ from .move_storyboard_entry import (
     MoveStoryboardEntryUpOperator,
 )
 from .prepare import PrepareSceneOperator
+from .quick_io_tools import (
+    QuickIOBatchRenameOperator,
+    QuickIOCreateAndBakeProxiesOperator,
+    QuickIOExportKeyframesOperator,
+    QuickIOImportKeyframesOperator,
+    QuickIOPreviewOperator,
+    register_quick_io_scene_properties,
+    unregister_quick_io_scene_properties,
+)
 from .recalculate_transitions import RecalculateTransitionsOperator
 from .refresh_file_formats import RefreshFileFormatsOperator
 from .remove_formation import RemoveFormationOperator
@@ -98,6 +122,17 @@ __all__ = (
     "DDSFExportOperator",
     "DeselectFormationOperator",
     "DetachMaterialsFromDroneTemplateOperator",
+    "DroneMaxCreateNamedEmptyOperator",
+    "DroneMaxGenerateEmptiesOperator",
+    "DroneMaxGeneratePointsOperator",
+    "DroneMaxImageFormationProperties",
+    "DroneMaxNamedEmptyProperties",
+    "DroneMaxSelectImageOperator",
+    "DroneMaxSkycConvertAndImportOperator",
+    "DroneMaxSkycImportProperties",
+    "DroneMaxUIState",
+    "DroneMaxVertsToEmptiesOperator",
+    "DroneMaxVertsToEmptiesProperties",
     "DrotekExportOperator",
     "DSSPath3ExportOperator",
     "DSSPathExportOperator",
@@ -150,4 +185,13 @@ __all__ = (
     "UseSelectedVertexGroupForFormationOperator",
     "ValidateTrajectoriesOperator",
     "VVIZExportOperator",
+    "QuickIOBatchRenameOperator",
+    "QuickIOCreateAndBakeProxiesOperator",
+    "QuickIOExportKeyframesOperator",
+    "QuickIOImportKeyframesOperator",
+    "QuickIOPreviewOperator",
+    "register_drone_max_scene_properties",
+    "unregister_drone_max_scene_properties",
+    "register_quick_io_scene_properties",
+    "unregister_quick_io_scene_properties",
 )

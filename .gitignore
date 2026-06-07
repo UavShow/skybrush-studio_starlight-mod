@@ -10,3 +10,7 @@ tmp/
 
 modules/skybrush
 modules/pyledctrl
+
+# Local versioned backup copies (kept on disk, not committed)
+*_backup_before_*.py
+.local_backups/

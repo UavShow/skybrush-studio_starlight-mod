@@ -31372,7 +31372,7 @@ for msg in translations_tuple:
 translations_dict.setdefault("en_US", {}).update(
     {
         ("*", "DroneMax动画辅助"): "DroneMax Assistant",
-        ("*", "DroneMax动画辅助v4.3.3"): "DroneMax Assistant v4.3.3",
+        ("*", "DroneMax动画辅助v4.3.4"): "DroneMax Assistant v4.3.4",
         ("*", "1. 参考图片转队形"): "1. Image to Formation",
         ("*", "2. 以选中物体的位置创建空物体"): "2. Create Empties at Selected Objects",
         ("*", "3. 顶点模型转空物体纯轴"): "3. Verts to Empties (Axes)",
@@ -31471,7 +31471,7 @@ translations_dict.setdefault("en_GB", {}).update(translations_dict["en_US"])
 translations_dict.setdefault("ja_JP", {}).update(
     {
         ("*", "DroneMax动画辅助"): "DroneMax アシスタント",
-        ("*", "DroneMax动画辅助v4.3.3"): "DroneMax アシスタント v4.3.3",
+        ("*", "DroneMax动画辅助v4.3.4"): "DroneMax アシスタント v4.3.4",
         ("*", "1. 参考图片转队形"): "1. 画像からフォーメーション",
         ("*", "2. 以选中物体的位置创建空物体"): "2. 選択オブジェクト位置にエンプティ作成",
         ("*", "3. 顶点模型转空物体纯轴"): "3. 頂点 → エンプティ(軸)",

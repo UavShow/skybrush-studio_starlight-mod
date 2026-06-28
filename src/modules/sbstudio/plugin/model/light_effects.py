@@ -964,7 +964,8 @@ class LightEffect(PropertyGroup):
         self.color_image = other.color_image
         self.invert_target = other.invert_target
 
-        self.preset_id = other.preset_id
+        if other.preset_id:
+            self.preset_id = other.preset_id
         self.color_function.update_from(other.color_function)
         self.output_function.update_from(other.output_function)
         self.output_function_y.update_from(other.output_function_y)

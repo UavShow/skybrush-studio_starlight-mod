@@ -22,7 +22,7 @@ Blender version 4.5.3 or higher is recommended.
 * **分组延迟起飞**：实现不同机型分组同时起飞或设定特定组别延迟起飞。
 * **革命性灯效管理**：内置 66 种炫酷灯效，并彻底解决原版跨平台（Win/Mac）协同导致的灯效脚本失效问题。
 * **国际化支持**：所有新功能均适配动态翻译，支持中、英、日三语。
-* 插件下载地址：https://github.com/UavShow/skybrush-studio_starlight-mod/releases/tag/v4.4.0-sl.1.1.1
+* 插件下载地址：https://github.com/UavShow/skybrush-studio_starlight-mod/releases/tag/v4.4.0-sl.1.1.2
 
 ### 📸 功能截图 (Screenshots)
 
@@ -55,7 +55,7 @@ Enhanced Blender plugin based on official [Studio 4.4.0](https://github.com/skyb
 * **Grouped & Delayed Takeoff**: Advanced control for simultaneous or delayed launches based on groups.
 * **Revolutionary Effects Sync**: 66 built-in effects and a total fix for cross-platform (Win/Mac) effect script library synchronization issues.
 * **International Support**: All new features are dynamically translated into English, Chinese, and Japanese.
-* Plugin download address：https://github.com/UavShow/skybrush-studio_starlight-mod/releases/tag/v4.4.0-sl.1.1.1
+* Plugin download address：https://github.com/UavShow/skybrush-studio_starlight-mod/releases/tag/v4.4.0-sl.1.1.2
 ---
 
 <a name="日本語"></a>
@@ -73,7 +73,7 @@ Enhanced Blender plugin based on official [Studio 4.4.0](https://github.com/skyb
 * **グループ遅延離陸**: グループごとの同時離陸または遅延離陸を実現。
 * **革命的なエフェクト同期**: 66 種類のエフェクトを内蔵。Win と Mac の間でプロジェクトを移動しても、エフェクトスクリプトが失われる問題を解消。
 * **多言語サポート**: すべての新機能は、中国語、英語、日本語の動的翻訳に対応。
-* プラグインのダウンロードURL：https://github.com/UavShow/skybrush-studio_starlight-mod/releases/tag/v4.4.0-sl.1.1.1
+* プラグインのダウンロードURL：https://github.com/UavShow/skybrush-studio_starlight-mod/releases/tag/v4.4.0-sl.1.1.2
 
 ---
 

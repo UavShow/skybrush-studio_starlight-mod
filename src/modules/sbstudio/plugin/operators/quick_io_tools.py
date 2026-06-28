@@ -64,6 +64,41 @@ def _numeric_suffix(name: str):
     return int(m.group(1)) if m else None
 
 
+def get_action_fcurves(act, anim_data=None):
+    """兼容 Blender 2.x–5.x 获取 Action 的 fcurves。"""
+    try:
+        return list(act.fcurves)
+    except AttributeError:
+        pass
+
+    result = []
+    layers = getattr(act, "layers", None)
+    if not layers:
+        return result
+
+    for layer in layers:
+        strips = getattr(layer, "strips", None) or []
+        for strip in strips:
+            slot = getattr(anim_data, "action_slot", None) if anim_data is not None else None
+            if slot is not None:
+                try:
+                    cb = strip.channelbag(slot)
+                    if cb is not None:
+                        result.extend(cb.fcurves)
+                    continue
+                except Exception:
+                    pass
+
+            channelbags = getattr(strip, "channelbags", None)
+            if channelbags:
+                for cb in channelbags:
+                    fcs = getattr(cb, "fcurves", None)
+                    if fcs:
+                        result.extend(fcs)
+
+    return result
+
+
 # ---------- 集合路径工具 ----------
 
 def find_collection_paths_for_object(obj, root):
@@ -174,7 +209,7 @@ class QuickIOExportKeyframesOperator(Operator):
             ad = getattr(obj, "animation_data", None)
             act = getattr(ad, "action", None)
             if act:
-                for fc in act.fcurves:
+                for fc in get_action_fcurves(act, ad):
                     if fc.data_path in ("location", "rotation_euler", "scale"):
                         for kp in fc.keyframe_points:
                             f = int(round(kp.co.x))
@@ -261,7 +296,7 @@ class QuickIOPreviewOperator(Operator):
             ad = getattr(obj, "animation_data", None)
             act = getattr(ad, "action", None)
             if act:
-                for fc in act.fcurves:
+                for fc in get_action_fcurves(act, ad):
                     if fc.data_path in ("location", "rotation_euler", "scale"):
                         for kp in fc.keyframe_points:
                             f = int(round(kp.co.x))

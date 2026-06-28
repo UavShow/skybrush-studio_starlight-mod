@@ -22,7 +22,7 @@ __all__ = ("DroneMaxAnimationAssistancePanel",)
 
 class DroneMaxAnimationAssistancePanel(Panel):
     bl_idname = "OBJECT_PT_dronemax_animation_assistance_panel"
-    bl_label = "DroneMax动画辅助v4.3.3"
+    bl_label = "DroneMax动画辅助v4.3.4"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "DroneMax动画辅助"

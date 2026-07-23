@@ -12,6 +12,8 @@ from sbstudio.plugin.operators import (
     ReorderFormationMarkersOperator,
     ReturnToHomeOperator,
     SelectFormationOperator,
+    SingleBoxHoverTestOperator,
+    SingleDroneHoverTestOperator,
     TakeoffOperator,
     UpdateFormationOperator,
 )
@@ -58,6 +60,20 @@ class FormationsPanel(Panel):
         row.operator(TakeoffOperator.bl_idname, text="Takeoff", icon="TRIA_UP_BAR")
         row.operator(ReturnToHomeOperator.bl_idname, text="RTH", icon="HOME")
         row.operator(LandOperator.bl_idname, text="Land", icon="TRIA_DOWN_BAR")
+
+        row = layout.row(align=True)
+        row.operator(
+            SingleDroneHoverTestOperator.bl_idname,
+            text="Single Drone Hover Test",
+            icon="SORTTIME",
+        )
+
+        row = layout.row(align=True)
+        row.operator(
+            SingleBoxHoverTestOperator.bl_idname,
+            text="Single Box Hover Test",
+            icon="SNAP_FACE_CENTER",
+        )
 
         layout.separator()
 

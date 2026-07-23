@@ -31359,6 +31359,137 @@ translations_tuple = (
         ("zh_HANS", "仅单机阵列", (False, ())),
         ("ja_JP", "従来配列のみ", (False, ())),
     ),
+    (
+        ("Operator", "Single Drone Hover Test"),
+        ((), ()),
+        ("zh_HANS", "单机悬停测试", (False, ())),
+    ),
+    (
+        ("*", "Single Drone Hover Test"),
+        ((), ()),
+        ("zh_HANS", "单机悬停测试", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Take off, hover and land each drone one by one to test the drones "
+            "individually after transportation, without flying the whole fleet at once",
+        ),
+        ((), ()),
+        (
+            "zh_HANS",
+            "逐台起飞、悬停并降落每一台无人机，在转场运输后单独测试每台无人机，无需一次性起飞全部无人机",
+            (False, ()),
+        ),
+    ),
+    (
+        ("*", "Hover Duration (s)"),
+        ((), ()),
+        ("zh_HANS", "悬停时间（秒）", (False, ())),
+    ),
+    (
+        ("*", "Time each drone hovers at the test altitude before returning home"),
+        ((), ()),
+        ("zh_HANS", "每台无人机在测试高度悬停的时间，之后开始返航", (False, ())),
+    ),
+    (
+        ("*", "Interval (s)"),
+        ((), ()),
+        ("zh_HANS", "间隔时间（秒）", (False, ())),
+    ),
+    (
+        ("*", "Time to wait after a drone has landed before the next drone takes off"),
+        ((), ()),
+        ("zh_HANS", "上一台无人机降落后，下一台无人机起飞前的等待时间", (False, ())),
+    ),
+    (
+        ("*", "Descent Velocity"),
+        ((), ()),
+        ("zh_HANS", "下降速度", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Average vertical velocity while the drone descends to the RTH altitude",
+        ),
+        ((), ()),
+        ("zh_HANS", "无人机下降到返航高度时的平均垂直速度", (False, ())),
+    ),
+    (
+        ("*", "RTH Altitude"),
+        ((), ()),
+        ("zh_HANS", "返航高度", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Altitude of the smart RTH phase; the drone descends quickly to "
+            "this altitude, then lands slowly from here to the ground",
+        ),
+        ((), ()),
+        (
+            "zh_HANS",
+            "智能返航阶段的高度；无人机快速下降到此高度后，再从此高度缓慢降落到地面",
+            (False, ()),
+        ),
+    ),
+    (
+        ("*", "Hover altitude of each drone during the test"),
+        ((), ()),
+        ("zh_HANS", "测试期间每台无人机的悬停高度", (False, ())),
+    ),
+    (
+        ("*", "Start frame of the hover test sequence"),
+        ((), ()),
+        ("zh_HANS", "悬停测试序列的起始帧", (False, ())),
+    ),
+    (
+        ("*", "Average vertical velocity during the takeoff of each drone"),
+        ((), ()),
+        ("zh_HANS", "每台无人机起飞时的平均垂直速度", (False, ())),
+    ),
+    (
+        ("Operator", "Single Box Hover Test"),
+        ((), ()),
+        ("zh_HANS", "单箱悬停测试", (False, ())),
+    ),
+    (
+        ("*", "Single Box Hover Test"),
+        ((), ()),
+        ("zh_HANS", "单箱悬停测试", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Take off, hover and land one drone per box at a time (all boxes in "
+            "parallel) to test large fleets box by box after transportation",
+        ),
+        ((), ()),
+        (
+            "zh_HANS",
+            "每箱同时起飞一台无人机进行悬停并降落（所有箱子并行），在转场运输后按箱快速测试大规模机群",
+            (False, ()),
+        ),
+    ),
+    (
+        ("*", "Drones per Box"),
+        ((), ()),
+        ("zh_HANS", "每箱无人机数", (False, ())),
+    ),
+    (
+        ("*", "Number of drones in each box of the takeoff grid"),
+        ((), ()),
+        ("zh_HANS", "起飞网格中每个箱子的无人机数量", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Time to wait after a round of drones has landed before the next "
+            "round takes off",
+        ),
+        ((), ()),
+        ("zh_HANS", "上一轮无人机降落后，下一轮无人机起飞前的等待时间", (False, ())),
+    ),
 )
 
 translations_dict = {}

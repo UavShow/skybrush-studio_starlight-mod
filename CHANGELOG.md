@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0-sl.1.1.3]
+
+### Added
+
+- Added the "Single Drone Hover Test" operator to the Formations panel. After
+  creating a takeoff grid, each drone (in Drone 1, Drone 2, ... order) takes
+  off alone to a common test altitude (5 m by default), hovers for a
+  user-defined duration, then returns to the ground with a smart-RTH-like
+  descent (fast descent to the RTH altitude, 1 m by default, then a slow
+  landing). A user-defined interval separates each drone's landing from the
+  next drone's takeoff, so the whole fleet can be tested one drone at a time
+  after transportation.
+
+- Added the "Single Box Hover Test" operator below the "Single Drone Hover
+  Test" button. Every box flies one drone at a time, with all boxes flying in
+  parallel, so large fleets can be tested in as many rounds as there are
+  drones per box (8 by default). Within each box the drones take off in
+  reading order (top-left first, left to right, top to bottom, viewed from
+  above), regardless of the fleet size. Hover duration and the interval
+  between rounds are user-configurable; traditional-array drones in mixed
+  grids stay on the ground during the test.
+
 ## [main]
 
 ### Added

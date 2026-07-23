@@ -93,6 +93,10 @@ from .set_time_of_storyboard_entry import (
     SetStoryboardEntryStartFrameOperator,
 )
 from .setup_scene import SetupSceneOperator
+from .single_drone_hover_test import (
+    SingleBoxHoverTestOperator,
+    SingleDroneHoverTestOperator,
+)
 from .swap_colors import SwapColorsInLEDControlPanelOperator
 from .takeoff import TakeoffOperator
 from .trigger_pyro import TriggerPyroOnSelectedDronesOperator
@@ -171,6 +175,8 @@ __all__ = (
     "SetStoryboardEntryStartFrameOperator",
     "SetServerURLOperator",
     "SetupSceneOperator",
+    "SingleBoxHoverTestOperator",
+    "SingleDroneHoverTestOperator",
     "SkybrushCSVExportOperator",
     "SkybrushExportOperator",
     "SkybrushPDFExportOperator",

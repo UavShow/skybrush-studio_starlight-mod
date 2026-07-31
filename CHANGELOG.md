@@ -5,6 +5,113 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0-sl.1.1.4]
+
+### Changed
+
+- Added Japanese (ja_JP) translations for the three hover test operators
+  (Single Drone Hover Test / Single Box Hover Test / Formation Hover Test),
+  including their shortened row button labels ("Single Hover" / "Box Hover"
+  / "Formation Hover" / "Land").
+
+- Updated default parameters to match the standard configuration:
+  - `CreateTakeoffGridOperator` ("创建起飞网格"): advanced settings enabled
+    by default, 64 drones split into 8 boxes (2x4 grid), 1m box spacing in
+    both X and Y.
+  - `TakeoffOperator` ("起飞"): altitude 10m, layer height 7m, spacing 1.5m,
+    box array layering enabled with the 8-layer scheme.
+  - `FormationHoverTestOperator` ("编队悬停测试"): base altitude 10m, layer
+    height 7m, hover duration 30s.
+
+- Collapsed all 8 sub-sections of the "DroneMax动画辅助v4.3.5" panel by
+  default (previously sections 3-8 were expanded by default).
+
+- Updated the addon's maintainer field (shown as "维护者" in Blender's
+  add-on preferences) from "CollMot Robotics Ltd." to "CollMot Robotics
+  Ltd & PeiYi (DroneMax Tech Co Ltd.)".
+
+### Added
+
+- Added the "Formation Hover Test" operator ("编队悬停测试") to the Formations
+  panel. Unlike the single-drone and single-box hover tests, this operator
+  takes off, hovers and lands the *whole fleet at once*. The fleet can
+  optionally be split into altitude layers using the same box array /
+  traditional array layering schemes as the Takeoff operator (mutually
+  exclusive choice), so that drones closer together than the safety distance
+  climb to different altitudes (default: 8-layer box scheme or 4-layer
+  traditional scheme). Parameters: start frame, takeoff velocity, base
+  (lowest layer) altitude, layer height, layering type/scheme, hover
+  duration, descent velocity, and "RTH Altitude" (repurposed as a
+  user-configurable minimum landing altitude, default 5m).
+
+  - Ascent mirrors the layered Takeoff operator exactly: drones on a
+    shorter climb (lower layer) wait on the ground and depart later, so
+    that every layer arrives at its own hover altitude at the same
+    synchronized time (one drone/box leaves the ground at a time,
+    layer by layer).
+  - Descent models real firmware 4.4.4 RTL behaviour as closely as
+    possible while minimizing flight time and battery use: after the
+    hover, the whole fleet descends together as a single rigid body --
+    every drone at the same vertical velocity at the same time, keeping
+    the formation and its altitude layers intact -- until the lowest
+    layer reaches "RTH Altitude". The animation ends there; the actual
+    touchdown is left entirely to each drone's own flight controller in
+    RTL mode (which on firmware 4.4.4 includes an additional ~3 second
+    motionless hover at that altitude after the mode switch, occurring
+    after the end of the animation). This avoids animating unnecessary
+    hovering or a staggered, layer-by-layer landing all the way to the
+    ground. The previous "RTL Switch Delay" and "Layer Landing Delay"
+    properties have been removed, as they are no longer needed by this
+    simpler descent model.
+  - Since the RTL/mode-switch/final-descent part of the flight is not
+    animated, the operator now places a "全部无人机落地时间" (All Drones
+    Landed Time) timeline marker at the estimated real-world moment every
+    drone has actually touched down. The estimate adds a fixed 3-second
+    RTL mode-switch hover, then the descent time computed from the
+    firmware's real two-stage landing speed profile (`LAND_SPEED_HIGH` =
+    1.3 m/s above 1m, `LAND_SPEED` = 0.4 m/s at/below 1m, threshold
+    `LAND_ALT_LOW` = 100cm), applied to the highest layer (which lands
+    last). The estimated time is also included in the operator's report
+    message. The marker's name is localized based on Blender's active
+    interface language ("All Drones Landed Time" / "全部无人机落地时间" /
+    "全ドローン着陸時刻"), and re-running the operator correctly replaces a
+    marker created under a previous language instead of leaving a stale
+    duplicate behind.
+
+### Fixed
+
+- Fixed the "SKYC 导入工具" (SKYC Import Tool) in the DroneMax Animation
+  Assistant panel crashing with `AttributeError: 'Action' object has no
+  attribute 'fcurves'` on Blender 5.1+, where Blender's new layered-action
+  API removed the legacy `Action.fcurves` shortcut. The tool now goes through
+  the existing `iter_all_f_curves` compatibility helper, which already
+  supports both the legacy and layered-action APIs.
+
+- Fixed the shortened "Single Hover" / "Box Hover" / "Formation Hover" row
+  button labels showing up in English instead of Chinese: operator buttons
+  translate their `text=` override using the `"Operator"` translation
+  context (not the generic `"*"` interface context), so the new
+  translations were registered under the wrong context. Also added the
+  missing `("Operator", "Land")` → "降落" translation for consistency.
+
+### Changed
+
+- The "Single Drone Hover Test", "Single Box Hover Test" and the new
+  "Formation Hover Test" buttons are now combined into a single row (with
+  shortened labels) to save UI space, and moved to sit directly below
+  "Create Takeoff Grid" and above the "Takeoff" / "RTH" / "Land" row.
+
+- Bumped the DroneMax Animation Assistant panel label to v4.3.5.
+
+- Empties imported by the "SKYC 导入工具" are now placed inside a dedicated
+  collection (named after the imported .skyc file) instead of directly under
+  the scene root collection, keeping the outliner tidy.
+
+- Attempted to auto-collapse the outliner after SKYC import / takeoff grid
+  creation, but Blender's Python API does not provide a reliable way to do
+  this (only a global, all-or-nothing hierarchy toggle is available, and it
+  interacts badly with object selection). This approach was reverted.
+
 ## [4.4.0-sl.1.1.3]
 
 ### Added

@@ -31363,11 +31363,13 @@ translations_tuple = (
         ("Operator", "Single Drone Hover Test"),
         ((), ()),
         ("zh_HANS", "单机悬停测试", (False, ())),
+        ("ja_JP", "単機ホバーテスト", (False, ())),
     ),
     (
         ("*", "Single Drone Hover Test"),
         ((), ()),
         ("zh_HANS", "单机悬停测试", (False, ())),
+        ("ja_JP", "単機ホバーテスト", (False, ())),
     ),
     (
         (
@@ -31381,31 +31383,46 @@ translations_tuple = (
             "逐台起飞、悬停并降落每一台无人机，在转场运输后单独测试每台无人机，无需一次性起飞全部无人机",
             (False, ()),
         ),
+        (
+            "ja_JP",
+            "各ドローンを1台ずつ離陸・ホバリング・着陸させ、輸送後に機群全体を一度に"
+            "飛行させることなく個別にテストします",
+            (False, ()),
+        ),
     ),
     (
         ("*", "Hover Duration (s)"),
         ((), ()),
         ("zh_HANS", "悬停时间（秒）", (False, ())),
+        ("ja_JP", "ホバー時間（秒）", (False, ())),
     ),
     (
         ("*", "Time each drone hovers at the test altitude before returning home"),
         ((), ()),
         ("zh_HANS", "每台无人机在测试高度悬停的时间，之后开始返航", (False, ())),
+        ("ja_JP", "各ドローンがテスト高度でホバリングしてから帰還するまでの時間", (False, ())),
     ),
     (
         ("*", "Interval (s)"),
         ((), ()),
         ("zh_HANS", "间隔时间（秒）", (False, ())),
+        ("ja_JP", "間隔時間（秒）", (False, ())),
     ),
     (
         ("*", "Time to wait after a drone has landed before the next drone takes off"),
         ((), ()),
         ("zh_HANS", "上一台无人机降落后，下一台无人机起飞前的等待时间", (False, ())),
+        (
+            "ja_JP",
+            "1台のドローンが着陸してから次のドローンが離陸するまでの待機時間",
+            (False, ()),
+        ),
     ),
     (
         ("*", "Descent Velocity"),
         ((), ()),
         ("zh_HANS", "下降速度", (False, ())),
+        ("ja_JP", "降下速度", (False, ())),
     ),
     (
         (
@@ -31414,11 +31431,13 @@ translations_tuple = (
         ),
         ((), ()),
         ("zh_HANS", "无人机下降到返航高度时的平均垂直速度", (False, ())),
+        ("ja_JP", "ドローンが帰還高度まで降下する際の平均垂直速度", (False, ())),
     ),
     (
         ("*", "RTH Altitude"),
         ((), ()),
         ("zh_HANS", "返航高度", (False, ())),
+        ("ja_JP", "帰還高度", (False, ())),
     ),
     (
         (
@@ -31432,31 +31451,42 @@ translations_tuple = (
             "智能返航阶段的高度；无人机快速下降到此高度后，再从此高度缓慢降落到地面",
             (False, ()),
         ),
+        (
+            "ja_JP",
+            "スマート帰還フェーズの高度。ドローンはこの高度まで素早く降下した後、"
+            "ここから地面までゆっくりと着陸します",
+            (False, ()),
+        ),
     ),
     (
         ("*", "Hover altitude of each drone during the test"),
         ((), ()),
         ("zh_HANS", "测试期间每台无人机的悬停高度", (False, ())),
+        ("ja_JP", "テスト中の各ドローンのホバー高度", (False, ())),
     ),
     (
         ("*", "Start frame of the hover test sequence"),
         ((), ()),
         ("zh_HANS", "悬停测试序列的起始帧", (False, ())),
+        ("ja_JP", "ホバーテストシーケンスの開始フレーム", (False, ())),
     ),
     (
         ("*", "Average vertical velocity during the takeoff of each drone"),
         ((), ()),
         ("zh_HANS", "每台无人机起飞时的平均垂直速度", (False, ())),
+        ("ja_JP", "各ドローンの離陸時の平均垂直速度", (False, ())),
     ),
     (
         ("Operator", "Single Box Hover Test"),
         ((), ()),
         ("zh_HANS", "单箱悬停测试", (False, ())),
+        ("ja_JP", "ボックスホバーテスト", (False, ())),
     ),
     (
         ("*", "Single Box Hover Test"),
         ((), ()),
         ("zh_HANS", "单箱悬停测试", (False, ())),
+        ("ja_JP", "ボックスホバーテスト", (False, ())),
     ),
     (
         (
@@ -31470,16 +31500,24 @@ translations_tuple = (
             "每箱同时起飞一台无人机进行悬停并降落（所有箱子并行），在转场运输后按箱快速测试大规模机群",
             (False, ()),
         ),
+        (
+            "ja_JP",
+            "各ボックスから1台ずつドローンを離陸・ホバリング・着陸させ（全ボックス並行）、"
+            "輸送後に大規模な機群をボックス単位で素早くテストします",
+            (False, ()),
+        ),
     ),
     (
         ("*", "Drones per Box"),
         ((), ()),
         ("zh_HANS", "每箱无人机数", (False, ())),
+        ("ja_JP", "ボックスあたりのドローン数", (False, ())),
     ),
     (
         ("*", "Number of drones in each box of the takeoff grid"),
         ((), ()),
         ("zh_HANS", "起飞网格中每个箱子的无人机数量", (False, ())),
+        ("ja_JP", "離陸グリッドの各ボックス内のドローン数", (False, ())),
     ),
     (
         (
@@ -31489,6 +31527,186 @@ translations_tuple = (
         ),
         ((), ()),
         ("zh_HANS", "上一轮无人机降落后，下一轮无人机起飞前的等待时间", (False, ())),
+        (
+            "ja_JP",
+            "1ラウンドのドローンが着陸してから次のラウンドが離陸するまでの待機時間",
+            (False, ()),
+        ),
+    ),
+    (
+        ("Operator", "Single Hover"),
+        ((), ()),
+        ("zh_HANS", "单机悬停", (False, ())),
+        ("ja_JP", "単機ホバー", (False, ())),
+    ),
+    (
+        ("Operator", "Box Hover"),
+        ((), ()),
+        ("zh_HANS", "单箱悬停", (False, ())),
+        ("ja_JP", "ボックスホバー", (False, ())),
+    ),
+    (
+        ("Operator", "Formation Hover"),
+        ((), ()),
+        ("zh_HANS", "编队悬停", (False, ())),
+        ("ja_JP", "編隊ホバー", (False, ())),
+    ),
+    (
+        ("Operator", "Land"),
+        ((), ()),
+        ("zh_HANS", "降落", (False, ())),
+        ("ja_JP", "着陸", (False, ())),
+    ),
+    (
+        ("Operator", "Formation Hover Test"),
+        ((), ()),
+        ("zh_HANS", "编队悬停测试", (False, ())),
+        ("ja_JP", "編隊ホバーテスト", (False, ())),
+    ),
+    (
+        ("*", "Formation Hover Test"),
+        ((), ()),
+        ("zh_HANS", "编队悬停测试", (False, ())),
+        ("ja_JP", "編隊ホバーテスト", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Take off and hover the whole fleet simultaneously, then descend as "
+            "a rigid body to a safe minimum altitude and let RTL mode finish "
+            "the landing, optionally split into altitude layers to keep drones "
+            "that are closer than the safety distance apart",
+        ),
+        ((), ()),
+        (
+            "zh_HANS",
+            "整个机群同时起飞并悬停，然后作为刚体整体下降到安全的最低高度，"
+            "剩余降落过程交由 RTL 模式完成，可选择将机群划分为不同高度的分层，"
+            "以保持距离小于安全间距的无人机分开",
+            (False, ()),
+        ),
+        (
+            "ja_JP",
+            "機群全体で同時に離陸してホバリングし、その後剛体として安全な最低高度まで"
+            "一体で降下します。残りの着陸は RTL モードに任せます。また、安全距離より"
+            "近いドローンを分けるために、機群を高度レイヤーに分割することもできます",
+            (False, ()),
+        ),
+    ),
+    (
+        ("*", "to Base Altitude"),
+        ((), ()),
+        ("zh_HANS", "最低高度为", (False, ())),
+        ("ja_JP", "最低高度まで", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Hover altitude of the lowest layer during the test; higher "
+            "layers hover at this altitude plus a multiple of the layer height",
+        ),
+        ((), ()),
+        (
+            "zh_HANS",
+            "测试期间最低层的悬停高度；更高的层在此高度基础上叠加若干倍的层高",
+            (False, ()),
+        ),
+        (
+            "ja_JP",
+            "テスト中の最下層のホバー高度。上位層はこの高度にレイヤー高さの倍数を"
+            "加えた高さでホバーします",
+            (False, ()),
+        ),
+    ),
+    (
+        (
+            "*",
+            "Difference between the hover altitudes of consecutive layers, "
+            "used when the fleet is split into altitude layers",
+        ),
+        ((), ()),
+        ("zh_HANS", "相邻分层悬停高度之间的差值，用于将机群划分为不同高度的分层", (False, ())),
+        (
+            "ja_JP",
+            "機群を高度レイヤーに分割する際に使用する、連続するレイヤー間の"
+            "ホバー高度の差",
+            (False, ()),
+        ),
+    ),
+    (
+        ("*", "Layering Type"),
+        ((), ()),
+        ("zh_HANS", "分层类型", (False, ())),
+        ("ja_JP", "レイヤータイプ", (False, ())),
+    ),
+    (
+        ("*", "Selects which layering scheme to use to split the fleet into altitude layers"),
+        ((), ()),
+        ("zh_HANS", "选择用于将机群划分为不同高度分层的分层方案", (False, ())),
+        ("ja_JP", "機群を高度レイヤーに分割する際に使用するレイヤー方式を選択します", (False, ())),
+    ),
+    (
+        ("*", "Layering scheme for the box array"),
+        ((), ()),
+        ("zh_HANS", "箱式阵列的分层方案", (False, ())),
+        ("ja_JP", "ボックス配列のレイヤー方式", (False, ())),
+    ),
+    (
+        ("*", "Layering scheme for the traditional single-drone array"),
+        ((), ()),
+        ("zh_HANS", "单机阵列的分层方案", (False, ())),
+        ("ja_JP", "単機配列のレイヤー方式", (False, ())),
+    ),
+    (
+        ("*", "Time the fleet hovers at the test altitude before returning home"),
+        ((), ()),
+        ("zh_HANS", "整个机群在测试高度悬停的时间，之后开始返航", (False, ())),
+        ("ja_JP", "機群がテスト高度でホバリングしてから帰還するまでの時間", (False, ())),
+    ),
+    (
+        ("*", "Average vertical velocity while the fleet descends to the RTH altitude"),
+        ((), ()),
+        ("zh_HANS", "机群下降到返航高度时的平均垂直速度", (False, ())),
+        ("ja_JP", "機群が帰還高度まで降下する際の平均垂直速度", (False, ())),
+    ),
+    (
+        (
+            "*",
+            "Minimum altitude the fleet descends to as a rigid body after "
+            "the hover; the animation ends here and each drone's flight "
+            "controller completes the landing on its own in RTL mode "
+            "(which on firmware 4.4.4 includes an additional ~3 second "
+            "motionless hover after the mode switch, occurring after the "
+            "end of this animation)",
+        ),
+        ((), ()),
+        (
+            "zh_HANS",
+            "机群作为刚体整体下降的最低高度；动画到此结束，之后由每台无人机自己的飞控 "
+            "以 RTL 模式独立完成剩余降落（在 4.4.4 固件上，飞控在切换模式后会在动画 "
+            "结束之后额外原地悬停约 3 秒）",
+            (False, ()),
+        ),
+        (
+            "ja_JP",
+            "機群が剛体として一体で降下する最低高度。アニメーションはここで終了し、"
+            "その後は各ドローン自身の飛行制御装置が RTL モードで単独で着陸を完了します"
+            "（4.4.4 ファームウェアでは、モード切替後にアニメーション終了後、追加で"
+            "約3秒間その場でホバリングします）",
+            (False, ()),
+        ),
+    ),
+    (
+        ("*", "Average vertical velocity during the takeoff of the fleet"),
+        ((), ()),
+        ("zh_HANS", "整个机群起飞时的平均垂直速度", (False, ())),
+        ("ja_JP", "機群の離陸時の平均垂直速度", (False, ())),
+    ),
+    (
+        ("*", "All Drones Landed Time"),
+        ((), ()),
+        ("zh_HANS", "全部无人机落地时间", (False, ())),
+        ("ja_JP", "全ドローン着陸時刻", (False, ())),
     ),
 )
 
@@ -31503,7 +31721,7 @@ for msg in translations_tuple:
 translations_dict.setdefault("en_US", {}).update(
     {
         ("*", "DroneMax动画辅助"): "DroneMax Assistant",
-        ("*", "DroneMax动画辅助v4.3.4"): "DroneMax Assistant v4.3.4",
+        ("*", "DroneMax动画辅助v4.3.5"): "DroneMax Assistant v4.3.5",
         ("*", "1. 参考图片转队形"): "1. Image to Formation",
         ("*", "2. 以选中物体的位置创建空物体"): "2. Create Empties at Selected Objects",
         ("*", "3. 顶点模型转空物体纯轴"): "3. Verts to Empties (Axes)",
@@ -31602,7 +31820,7 @@ translations_dict.setdefault("en_GB", {}).update(translations_dict["en_US"])
 translations_dict.setdefault("ja_JP", {}).update(
     {
         ("*", "DroneMax动画辅助"): "DroneMax アシスタント",
-        ("*", "DroneMax动画辅助v4.3.4"): "DroneMax アシスタント v4.3.4",
+        ("*", "DroneMax动画辅助v4.3.5"): "DroneMax アシスタント v4.3.5",
         ("*", "1. 参考图片转队形"): "1. 画像からフォーメーション",
         ("*", "2. 以选中物体的位置创建空物体"): "2. 選択オブジェクト位置にエンプティ作成",
         ("*", "3. 顶点模型转空物体纯轴"): "3. 頂点 → エンプティ(軸)",

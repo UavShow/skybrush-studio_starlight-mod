@@ -734,7 +734,7 @@ class CreateTakeoffGridOperator(Operator):
 
     use_advanced_settings = BoolProperty(
         name="Advanced",
-        default=False,
+        default=True,
         description="Advanced settings for creating the takeoff grid",
     )
 
@@ -764,7 +764,7 @@ class CreateTakeoffGridOperator(Operator):
     box_drone_count = IntProperty(
         name="Drone Count",
         description="Total number of drones in the box grid",
-        default=48,
+        default=64,
         min=0,
         soft_max=10000,
         update=_update_box_drone_count,
@@ -773,7 +773,7 @@ class CreateTakeoffGridOperator(Operator):
     box_boxes_count = IntProperty(
         name="Boxes Count",
         description="Number of boxes in the grid",
-        default=6,
+        default=8,
         min=1,
         soft_max=1000,
         update=_update_box_boxes_count,
@@ -790,7 +790,7 @@ class CreateTakeoffGridOperator(Operator):
     box_grid_cols = IntProperty(
         name="Columns",
         description="Number of columns in the box grid",
-        default=3,
+        default=4,
         min=1,
         soft_max=100,
     )
@@ -842,7 +842,7 @@ class CreateTakeoffGridOperator(Operator):
     box_spacing_x = FloatProperty(
         name="X Spacing",
         description="Spacing between boxes in X direction (edge-to-edge)",
-        default=0.6,
+        default=1.0,
         min=0.0,
         soft_max=50.0,
         unit="LENGTH",
@@ -851,7 +851,7 @@ class CreateTakeoffGridOperator(Operator):
     box_spacing_y = FloatProperty(
         name="Y Spacing",
         description="Spacing between boxes in Y direction (edge-to-edge)",
-        default=0.6,
+        default=1.0,
         min=0.0,
         soft_max=50.0,
         unit="LENGTH",

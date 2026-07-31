@@ -728,10 +728,10 @@ def register_quick_io_scene_properties():
     bpy.types.Scene.brt_import_ico_subdiv = IntProperty(name="菱角球细分", default=1, min=0, max=5)
 
     # UI 折叠状态
-    bpy.types.Scene.ui_fold_sky = BoolProperty(name="展开：创建替身并镜像烘焙", default=True)
-    bpy.types.Scene.ui_fold_export = BoolProperty(name="展开：导出关键帧设置", default=True)
-    bpy.types.Scene.ui_fold_import = BoolProperty(name="展开：导入关键帧设置", default=True)
-    bpy.types.Scene.ui_fold_tools = BoolProperty(name="展开：选中物体批量重命名", default=True)
+    bpy.types.Scene.ui_fold_sky = BoolProperty(name="展开：创建替身并镜像烘焙", default=False)
+    bpy.types.Scene.ui_fold_export = BoolProperty(name="展开：导出关键帧设置", default=False)
+    bpy.types.Scene.ui_fold_import = BoolProperty(name="展开：导入关键帧设置", default=False)
+    bpy.types.Scene.ui_fold_tools = BoolProperty(name="展开：选中物体批量重命名", default=False)
 
 
 def unregister_quick_io_scene_properties():

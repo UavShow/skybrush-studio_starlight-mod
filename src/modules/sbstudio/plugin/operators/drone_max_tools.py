@@ -12,6 +12,8 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty, St
 from bpy.types import Operator, PropertyGroup
 from bpy_extras.io_utils import ImportHelper
 
+from sbstudio.plugin.actions import iter_all_f_curves
+
 __all__ = (
     "DroneMaxImageFormationProperties",
     "DroneMaxNamedEmptyProperties",
@@ -32,8 +34,8 @@ __all__ = (
 class DroneMaxUIState(PropertyGroup):
     show_section_1: BoolProperty(name="1. 参考图片转队形", default=False)
     show_section_2: BoolProperty(name="2. 以选中物体的位置创建空物体", default=False)
-    show_section_3: BoolProperty(name="3. 顶点模型转空物体纯轴", default=True)
-    show_section_4: BoolProperty(name="4. SKYC 导入工具", default=True)
+    show_section_3: BoolProperty(name="3. 顶点模型转空物体纯轴", default=False)
+    show_section_4: BoolProperty(name="4. SKYC 导入工具", default=False)
 
 
 class DroneMaxImageFormationProperties(PropertyGroup):
@@ -369,6 +371,17 @@ def _write_csv(path, rows):
         writer.writerows(rows)
 
 
+def _ensure_skyc_import_collection(context, name: str) -> bpy.types.Collection:
+    """获取或创建一个用于存放 SKYC 导入空物体的集合，避免根目录凌乱。"""
+    col = bpy.data.collections.get(name)
+    if col is None:
+        col = bpy.data.collections.new(name)
+        context.scene.collection.children.link(col)
+    elif name not in context.scene.collection.children.keys():
+        context.scene.collection.children.link(col)
+    return col
+
+
 class DroneMaxSkycConvertAndImportOperator(Operator):
     bl_idname = "dronemax.skyc_convert_import"
     bl_label = "转换 .skyc 并导入"
@@ -388,7 +401,9 @@ class DroneMaxSkycConvertAndImportOperator(Operator):
             self.report({"ERROR"}, f"读取失败: {exc}")
             return {"CANCELLED"}
         base_dir = os.path.dirname(skyc_path)
-        csv_dir = os.path.join(base_dir, os.path.splitext(os.path.basename(skyc_path))[0] + "_CSV")
+        skyc_basename = os.path.splitext(os.path.basename(skyc_path))[0]
+        csv_dir = os.path.join(base_dir, skyc_basename + "_CSV")
+        import_col = _ensure_skyc_import_collection(context, f"SKYC_{skyc_basename}")
         created_count = 0
         for drone_data in drones:
             name = drone_data["name"]
@@ -404,7 +419,7 @@ class DroneMaxSkycConvertAndImportOperator(Operator):
             obj = bpy.data.objects.new(name, None)
             obj.empty_display_type = "PLAIN_AXES"
             obj.empty_display_size = float(props.empty_size)
-            context.scene.collection.objects.link(obj)
+            import_col.objects.link(obj)
             last_frame = int(math.ceil(max(offset + points[-1][0], 0.0) * props.import_fps))
             for frame in range(0, last_frame + 1, props.keyframe_step):
                 t_global = frame / props.import_fps
@@ -412,7 +427,7 @@ class DroneMaxSkycConvertAndImportOperator(Operator):
                 obj.location = _transform_coords(x, y, z, props.coord_mode)
                 obj.keyframe_insert(data_path="location", frame=props.start_frame + frame)
             if props.force_linear_keys and obj.animation_data and obj.animation_data.action:
-                for fcurve in obj.animation_data.action.fcurves:
+                for fcurve in iter_all_f_curves(obj.animation_data):
                     for keyframe in fcurve.keyframe_points:
                         keyframe.interpolation = "LINEAR"
             created_count += 1

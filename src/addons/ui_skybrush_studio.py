@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Skybrush Studio",
-    "author": "CollMot Robotics Ltd.",
+    "author": "CollMot Robotics Ltd & PeiYi (DroneMax Tech Co Ltd.)",
     "description": "Extends Blender with UI components for drone show design",
     "version": (4, 4, 0),
     "blender": (4, 4, 0),
@@ -113,6 +113,7 @@ from sbstudio.plugin.operators import (
     SetDroneCoordOperator,
     FinaleCSVExportOperator,
     FixConstraintOrderingOperator,
+    FormationHoverTestOperator,
     GetFormationStatisticsOperator,
     ImportLightEffectsOperator,
     KMZExportOperator,
@@ -301,6 +302,7 @@ operators = (
     ReturnToHomeOperator,
     SingleDroneHoverTestOperator,
     SingleBoxHoverTestOperator,
+    FormationHoverTestOperator,
     AddMarkersFromStaticCSVOperator,
     AddMarkersFromSVGOperator,
     AddMarkersFromZippedCSVOperator,

@@ -172,7 +172,7 @@ class TakeoffOperator(StoryboardOperator):
             "Altitude to take off to. In case of layered takeoff "
             "the desired takeoff altitude of the lowest layer"
         ),
-        default=6,
+        default=10,
         soft_min=0,
         soft_max=50,
         unit="LENGTH",
@@ -204,7 +204,7 @@ class TakeoffOperator(StoryboardOperator):
     spacing = FloatProperty(
         name="Spacing",
         description="Minimum distance between drones during takeoff",
-        default=3,
+        default=1.5,
         min=0.1,
         soft_max=50,
         unit="LENGTH",
@@ -217,7 +217,7 @@ class TakeoffOperator(StoryboardOperator):
             "for multi-phase takeoffs when multiple drones occupy the same "
             "takeoff slot within safety distance."
         ),
-        default=5,
+        default=7,
         soft_min=0,
         soft_max=50,
         unit="LENGTH",
@@ -226,7 +226,7 @@ class TakeoffOperator(StoryboardOperator):
     # === Starlight Box Array Layering ===
     use_box_layering = BoolProperty(
         name="Box Array Layering",
-        default=False,
+        default=True,
         description="Use Starlight Animator's optimized layer sequence for box takeoff (reduces airflow interference)",
     )
 
@@ -239,7 +239,7 @@ class TakeoffOperator(StoryboardOperator):
             ("L12", "12-Layer", "12-layer interleave (for spacing 1.0-1.4m)"),
             ("L16", "16-Layer", "16-layer interleave (for spacing <1.0m)"),
         ],
-        default="AUTO",
+        default="L8",
     )
 
     # === Starlight Traditional Array Layering ===

@@ -94,6 +94,7 @@ from .set_time_of_storyboard_entry import (
 )
 from .setup_scene import SetupSceneOperator
 from .single_drone_hover_test import (
+    FormationHoverTestOperator,
     SingleBoxHoverTestOperator,
     SingleDroneHoverTestOperator,
 )
@@ -146,6 +147,7 @@ __all__ = (
     "ExportLightEffectsOperator",
     "FinaleCSVExportOperator",
     "FixConstraintOrderingOperator",
+    "FormationHoverTestOperator",
     "GetFormationStatisticsOperator",
     "ImportLightEffectsOperator",
     "LandOperator",

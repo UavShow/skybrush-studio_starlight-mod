@@ -7,6 +7,8 @@ from sbstudio.plugin.operators import (
     DroneMaxCreateNamedEmptyOperator,
     DroneMaxGenerateEmptiesOperator,
     DroneMaxGeneratePointsOperator,
+    DroneMaxLandingDescendOperator,
+    DroneMaxReadCurrentFrameToPropOperator,
     DroneMaxSelectImageOperator,
     DroneMaxSkycConvertAndImportOperator,
     DroneMaxVertsToEmptiesOperator,
@@ -22,7 +24,7 @@ __all__ = ("DroneMaxAnimationAssistancePanel",)
 
 class DroneMaxAnimationAssistancePanel(Panel):
     bl_idname = "OBJECT_PT_dronemax_animation_assistance_panel"
-    bl_label = "DroneMax动画辅助v4.3.5"
+    bl_label = "DroneMax动画辅助v4.3.6"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "DroneMax动画辅助"
@@ -76,22 +78,52 @@ class DroneMaxAnimationAssistancePanel(Panel):
             sub.label(text=tr("导入设置"))
             sub.prop(props, "import_fps", text=tr("导入帧率 (FPS)"))
             sub.prop(props, "start_frame", text=tr("起始帧"))
-            sub.prop(props, "coord_mode", text=tr("坐标系"))
-            sub.prop(props, "global_time_offset", text=tr("手动时间偏移 (秒)"))
-            sub = box.box()
-            sub.label(text=tr("精度与调试"))
-            sub.prop(props, "per_frame", text=tr("逐帧导入"))
-            if props.per_frame:
-                sub.prop(props, "keyframe_step", text=tr("关键帧步长"))
-            else:
-                sub.prop(props, "sample_dt", text=tr("CSV 采样间隔 (秒)"))
-            sub.prop(props, "use_linear", text=tr("忽略贝塞尔手柄"))
-            sub.prop(props, "enable_debug", icon="CONSOLE", text=tr("启用调试信息"))
-            sub = box.box()
-            sub.prop(props, "save_csv", text=tr("同时导出 CSV"))
-            box.operator(DroneMaxSkycConvertAndImportOperator.bl_idname, icon="IMPORT", text=tr("转换 .skyc 并导入"))
+            row = sub.row(align=True)
+            row.prop(props, "show_advanced", text=tr("高级选项"))
+            if props.show_advanced:
+                sub.prop(props, "coord_mode", text=tr("坐标系"))
+                sub.prop(props, "global_time_offset", text=tr("手动时间偏移 (秒)"))
+                sub2 = sub.box()
+                sub2.label(text=tr("精度与调试"))
+                sub2.prop(props, "per_frame", text=tr("逐帧导入"))
+                if props.per_frame:
+                    sub2.prop(props, "keyframe_step", text=tr("关键帧步长"))
+                else:
+                    sub2.prop(props, "sample_dt", text=tr("CSV 采样间隔 (秒)"))
+                sub.prop(props, "use_linear", text=tr("忽略贝塞尔手柄"))
+                sub.prop(props, "enable_debug", icon="CONSOLE", text=tr("启用调试信息"))
+                sub.prop(props, "save_csv", text=tr("同时导出 CSV"))
+            box.operator(DroneMaxSkycConvertAndImportOperator.bl_idname, icon="IMPORT", text=tr("导入.skyc文件"))
 
         self._draw_quick_io(context, layout, tr)
+
+        box = draw_section_header("show_section_9", "9. 降落设置")
+        if box:
+            box.prop(
+                context.scene,
+                "dronemax_landing_target_collection",
+                text=tr("降落集合"),
+            )
+            row = box.row(align=True)
+            row.prop(context.scene.dronemax_landing_props, "start_frame")
+            op = row.operator(
+                DroneMaxReadCurrentFrameToPropOperator.bl_idname,
+                icon="TIME",
+                text="",
+            )
+            op.target_prop = "dronemax_landing_props.start_frame"
+            row.prop(context.scene.dronemax_landing_props, "velocity_z")
+            row.prop(context.scene.dronemax_landing_props, "rth_altitude")
+            box.prop(
+                context.scene.dronemax_landing_props,
+                "scale_down_drones",
+                text=tr("无人机缩小"),
+            )
+            box.operator(
+                DroneMaxLandingDescendOperator.bl_idname,
+                icon="TRIA_DOWN_BAR",
+                text=tr("开始降落"),
+            )
 
     def _draw_quick_io(self, context: Context, layout, tr):
         scn = context.scene
@@ -115,12 +147,24 @@ class DroneMaxAnimationAssistancePanel(Panel):
         if box:
             col = box.column(align=True)
             row = col.row(align=True)
-            row.prop(scn, "sky_drones_collection", text=tr("Drones集合名"))
+            row.prop(scn, "sky_drones_collection", text=tr("无人机"))
             row.prop(scn, "sky_proxies_collection", text=tr("替身集合名"))
             row = col.row(align=True)
-            row.prop(scn, "sky_mirror_from_frame", text=tr("镜像起始帧(0=起始)"))
-            row.prop(scn, "sky_mirror_to_frame", text=tr("镜像结束帧(0=当前)"))
-            col.prop(scn, "sky_mirror_step", text=tr("步长(帧)"))
+            row.prop(scn, "sky_mirror_from_frame", text=tr("镜像起始帧"))
+            op = row.operator(
+                DroneMaxReadCurrentFrameToPropOperator.bl_idname,
+                icon="TIME",
+                text="",
+            )
+            op.target_prop = "sky_mirror_from_frame"
+            row.prop(scn, "sky_mirror_to_frame", text=tr("镜像结束帧"))
+            op = row.operator(
+                DroneMaxReadCurrentFrameToPropOperator.bl_idname,
+                icon="TIME",
+                text="",
+            )
+            op.target_prop = "sky_mirror_to_frame"
+            row.prop(scn, "sky_mirror_step", text=tr("步长(帧)"))
             col.separator()
             col.prop(scn, "sky_mirror_adaptive", text=tr("自适应镜像采样"))
             if scn.sky_mirror_adaptive:
@@ -164,10 +208,9 @@ class DroneMaxAnimationAssistancePanel(Panel):
             )
             info = col.box()
             info.label(text=tr("导出文件：") + f"{blend_name}.brta")
-            info.label(
-                text=tr("场景帧范围：")
-                + f"{int(getattr(scn, 'frame_start', 1))} - {int(getattr(scn, 'frame_end', 250))}"
-            )
+            from_f = scn.sky_mirror_from_frame if scn.sky_mirror_from_frame > 0 else 1
+            to_f = scn.sky_mirror_to_frame if scn.sky_mirror_to_frame > 0 else scn.frame_current
+            info.label(text=tr("镜像帧范围：") + f"{from_f} - {to_f}")
             row = col.row(align=True)
             row.operator(QuickIOPreviewOperator.bl_idname, icon="VIEWZOOM", text=tr("预览（对象与帧并集）"))
             row.operator(QuickIOExportKeyframesOperator.bl_idname, icon="EXPORT", text=tr("导出关键帧 (.brta)"))

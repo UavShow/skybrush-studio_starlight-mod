@@ -31703,6 +31703,12 @@ translations_tuple = (
         ("ja_JP", "機群の離陸時の平均垂直速度", (False, ())),
     ),
     (
+        ("*", "Group Landed Time"),
+        ((), ()),
+        ("zh_HANS", "该分组落地时间", (False, ())),
+        ("ja_JP", "グループ着陸時刻", (False, ())),
+    ),
+    (
         ("*", "All Drones Landed Time"),
         ((), ()),
         ("zh_HANS", "全部无人机落地时间", (False, ())),
@@ -31722,6 +31728,7 @@ translations_dict.setdefault("en_US", {}).update(
     {
         ("*", "DroneMax动画辅助"): "DroneMax Assistant",
         ("*", "DroneMax动画辅助v4.3.5"): "DroneMax Assistant v4.3.5",
+        ("*", "DroneMax动画辅助v4.3.6"): "DroneMax Assistant v4.3.6",
         ("*", "1. 参考图片转队形"): "1. Image to Formation",
         ("*", "2. 以选中物体的位置创建空物体"): "2. Create Empties at Selected Objects",
         ("*", "3. 顶点模型转空物体纯轴"): "3. Verts to Empties (Axes)",
@@ -31730,6 +31737,7 @@ translations_dict.setdefault("en_US", {}).update(
         ("*", "6. 导出关键帧设置"): "6. Export Keyframe Settings",
         ("*", "7. 导入关键帧设置"): "7. Import Keyframe Settings",
         ("*", "8. 选中物体批量重命名"): "8. Batch Rename Selected Objects",
+        ("*", "9. 降落设置"): "9. Landing Settings",
         ("*", "参考图片"): "Reference Image",
         ("*", "最小间距"): "Min Distance",
         ("*", "基础名称"): "Base Name",
@@ -31756,10 +31764,10 @@ translations_dict.setdefault("en_US", {}).update(
         ("*", "启用调试信息"): "Enable Debug Info",
         ("*", "同时导出 CSV"): "Export CSV Too",
         ("*", "转换 .skyc 并导入"): "Convert .skyc and Import",
-        ("*", "Drones集合名"): "Drones Collection",
+        ("*", "无人机"): "Drones Collection",
         ("*", "替身集合名"): "Proxy Collection",
-        ("*", "镜像起始帧(0=起始)"): "Mirror Start Frame (0=Start)",
-        ("*", "镜像结束帧(0=当前)"): "Mirror End Frame (0=Current)",
+        ("*", "镜像起始帧"): "Mirror Start Frame (0=Start)",
+        ("*", "镜像结束帧"): "Mirror End Frame (0=Current)",
         ("*", "步长(帧)"): "Step (Frames)",
         ("*", "自适应镜像采样"): "Adaptive Mirror Sampling",
         ("*", "自适应最大位移(米)"): "Adaptive Max Distance (m)",
@@ -31814,6 +31822,21 @@ translations_dict.setdefault("en_US", {}).update(
         ("*", "导入 .brta 时创建的对象类型"): "Object type to create when importing .brta",
         ("*", "导入为空物体"): "Import as empties",
         ("*", "导入为菱角球(Icosphere)替身"): "Import as icosphere proxies",
+        ("*", "降落设置"): "Landing Settings",
+        ("*", "降落集合"): "Landing Collection",
+        ("*", "在此帧"): "At Frame",
+        ("*", "开始降落"): "Start Landing",
+        ("*", "高级选项"): "Advanced Options",
+        ("*", "读取当前帧"): "Read Current Frame",
+        ("*", "读取时间轴当前帧并写入目标参数，保留手动输入功能"): "Read the current timeline frame and write it to the target parameter; manual input remains possible",
+        ("*", "导入.skyc文件"): "Import .skyc File",
+        ("*", "镜像帧范围："): "Mirror Frame Range: ",
+        ("*", "对目标集合中的空物体沿 Z 轴统一下降到返航高度"): "Uniformly descend the empties in the target collection along the Z axis to the RTH altitude",
+        ("*", "下降速度"): "Descent Velocity",
+        ("*", "返航高度"): "RTH Altitude",
+        ("*", "无人机缩小"): "Scale Down Drones",
+        ("*", "降落结束时将无人机缩回 0.15 米，避免落地后穿模"): "Scale the drones back to 0.15 m at the end of the descent to avoid model clipping on the ground",
+        ("*", "RTH Animation"): "RTH_Animation",
     }
 )
 translations_dict.setdefault("en_GB", {}).update(translations_dict["en_US"])
@@ -31821,6 +31844,7 @@ translations_dict.setdefault("ja_JP", {}).update(
     {
         ("*", "DroneMax动画辅助"): "DroneMax アシスタント",
         ("*", "DroneMax动画辅助v4.3.5"): "DroneMax アシスタント v4.3.5",
+        ("*", "DroneMax动画辅助v4.3.6"): "DroneMax アシスタント v4.3.6",
         ("*", "1. 参考图片转队形"): "1. 画像からフォーメーション",
         ("*", "2. 以选中物体的位置创建空物体"): "2. 選択オブジェクト位置にエンプティ作成",
         ("*", "3. 顶点模型转空物体纯轴"): "3. 頂点 → エンプティ(軸)",
@@ -31829,6 +31853,7 @@ translations_dict.setdefault("ja_JP", {}).update(
         ("*", "6. 导出关键帧设置"): "6. キーフレーム書き出し設定",
         ("*", "7. 导入关键帧设置"): "7. キーフレーム読み込み設定",
         ("*", "8. 选中物体批量重命名"): "8. 選択オブジェクトの一括リネーム",
+        ("*", "9. 降落设置"): "9. 着陸設定",
         ("*", "参考图片"): "参照画像",
         ("*", "最小间距"): "最小間隔",
         ("*", "基础名称"): "基本名",
@@ -31855,10 +31880,10 @@ translations_dict.setdefault("ja_JP", {}).update(
         ("*", "启用调试信息"): "デバッグ情報を有効化",
         ("*", "同时导出 CSV"): "CSV もエクスポート",
         ("*", "转换 .skyc 并导入"): ".skyc を変換してインポート",
-        ("*", "Drones集合名"): "Drones コレクション名",
+        ("*", "无人机"): "Drones コレクション名",
         ("*", "替身集合名"): "プロキシコレクション名",
-        ("*", "镜像起始帧(0=起始)"): "ミラー開始フレーム (0=開始)",
-        ("*", "镜像结束帧(0=当前)"): "ミラー終了フレーム (0=現在)",
+        ("*", "镜像起始帧"): "ミラー開始フレーム (0=開始)",
+        ("*", "镜像结束帧"): "ミラー終了フレーム (0=現在)",
         ("*", "步长(帧)"): "ステップ (フレーム)",
         ("*", "自适应镜像采样"): "適応ミラーサンプリング",
         ("*", "自适应最大位移(米)"): "適応最大変位 (m)",
@@ -31913,6 +31938,40 @@ translations_dict.setdefault("ja_JP", {}).update(
         ("*", "导入 .brta 时创建的对象类型"): ".brta 読み込み時に作成するオブジェクトタイプ",
         ("*", "导入为空物体"): "エンプティとして読み込みます",
         ("*", "导入为菱角球(Icosphere)替身"): "イコスフィアプロキシとして読み込みます",
+        ("*", "降落设置"): "着陸設定",
+        ("*", "降落集合"): "着陸コレクション",
+        ("*", "在此帧"): "このフレーム",
+        ("*", "开始降落"): "着陸開始",
+        ("*", "高级选项"): "詳細オプション",
+        ("*", "读取当前帧"): "現在フレームを読み込み",
+        ("*", "读取时间轴当前帧并写入目标参数，保留手动输入功能"): "タイムラインの現在フレームを読み込み、対象パラメータに書き込みます（手動入力も可能です）",
+        ("*", "导入.skyc文件"): ".skyc ファイルを読み込みます",
+        ("*", "镜像帧范围："): "ミラーフレーム範囲：",
+        ("*", "对目标集合中的空物体沿 Z 轴统一下降到返航高度"): "対象コレクション内のエンプティを Z 軸方向に一斉に RTH 高度まで降下させます",
+        ("*", "下降速度"): "降下速度",
+        ("*", "返航高度"): "RTH 高度",
+        ("*", "无人机缩小"): "ドローン縮小",
+        ("*", "降落结束时将无人机缩回 0.15 米，避免落地后穿模"): "降下終了時にドローンを 0.15 m に縮小し、着地後のモデルのめり込みを防ぎます",
+    }
+)
+
+translations_dict.setdefault("zh_HANS", {}).update(
+    {
+        ("*", "Start RTH"): "开始返航",
+        ("*", "End RTH"): "返航结束",
+        ("*", "RTH Animation"): "返航动画",
+        ("*", "Scale Up Drones"): "无人机放大",
+        ("*", "Scale Down Drones"): "无人机缩小",
+    }
+)
+
+translations_dict.setdefault("ja_JP", {}).update(
+    {
+        ("*", "Start RTH"): "帰還開始",
+        ("*", "End RTH"): "帰還終了",
+        ("*", "RTH Animation"): "アニメーションに戻る",
+        ("*", "Scale Up Drones"): "ドローン拡大",
+        ("*", "Scale Down Drones"): "ドローン縮小",
     }
 )
 

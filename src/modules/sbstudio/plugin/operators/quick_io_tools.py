@@ -20,6 +20,10 @@ from bpy.props import (
     EnumProperty,
 )
 from mathutils import Matrix
+from sbstudio.plugin.utils.landing_estimate import (
+    get_localized_marker_name,
+    place_landed_time_marker,
+)
 
 __all__ = (
     "QuickIOExportKeyframesOperator",
@@ -191,8 +195,8 @@ class QuickIOExportKeyframesOperator(Operator):
         out_path = os.path.join(base_dir, base_name + EXT)
         ensure_dir(out_path)
 
-        frame_start = int(getattr(scn, "frame_start", 1))
-        frame_end = int(getattr(scn, "frame_end", 250))
+        frame_start = scn.sky_mirror_from_frame if scn.sky_mirror_from_frame > 0 else 1
+        frame_end = scn.sky_mirror_to_frame if scn.sky_mirror_to_frame > 0 else scn.frame_current
         fps = int(round(scn.render.fps / max(1e-6, scn.render.fps_base))) if hasattr(scn.render, "fps") else 24
 
         targets = collect_target_objects(context, scn)
@@ -289,8 +293,8 @@ class QuickIOPreviewOperator(Operator):
     def execute(self, context):
         scn = context.scene
         targets = collect_target_objects(context, scn)
-        frame_start = int(getattr(scn, "frame_start", 1))
-        frame_end = int(getattr(scn, "frame_end", 250))
+        frame_start = scn.sky_mirror_from_frame if scn.sky_mirror_from_frame > 0 else 1
+        frame_end = scn.sky_mirror_to_frame if scn.sky_mirror_to_frame > 0 else scn.frame_current
         union_frames = set()
         for obj in targets:
             ad = getattr(obj, "animation_data", None)
@@ -388,13 +392,15 @@ class QuickIOImportKeyframesOperator(Operator):
         fps = int(data.get("fps", 24))
 
         try:
-            scn.frame_start = frame_start
-            scn.frame_end = frame_end
             if hasattr(scn.render, "fps"):
                 scn.render.fps = fps
                 scn.render.fps_base = 1.0
         except Exception:
             pass
+
+        # 本次导入内部创建的集合缓存：同一路径复用同一新建集合，
+        # 但绝不复用工程中已存在的同名集合，避免导入对象与原有对象混在一起
+        import_collection_cache = {}
 
         def ensure_collection_path(path_str: str) -> bpy.types.Collection:
             scene_root = bpy.context.scene.collection
@@ -406,19 +412,21 @@ class QuickIOImportKeyframesOperator(Operator):
             if parts and parts[0] == scene_root.name:
                 parts = parts[1:]
             parent = scene_root
+            walked = []
             for name in parts:
-                child = None
-                for c in parent.children:
-                    if c.name == name:
-                        child = c
-                        break
+                walked.append(name)
+                cache_key = "/".join(walked)
+                child = import_collection_cache.get(cache_key)
                 if child is None:
+                    # 总是新建集合；若工程中已有同名集合，Blender 会自动加 .001 后缀
                     child = bpy.data.collections.new(name)
                     parent.children.link(child)
+                    import_collection_cache[cache_key] = child
                 parent = child
             return parent
 
         created = 0
+        used_collections = set()
         imp_type = getattr(scn, "brt_import_proxy_type", "EMPTY")
         ico_radius = float(getattr(scn, "brt_import_ico_radius", 0.1))
         ico_subdiv = int(getattr(scn, "brt_import_ico_subdiv", 1))
@@ -429,6 +437,8 @@ class QuickIOImportKeyframesOperator(Operator):
             coll_path = ent.get("collection_path", "")
 
             target_coll = ensure_collection_path(coll_path)
+            if target_coll is not None:
+                used_collections.add(target_coll)
 
             base_name = name
             final_name = base_name
@@ -470,6 +480,16 @@ class QuickIOImportKeyframesOperator(Operator):
 
             created += 1
 
+        for msgid, frame in (("Start RTH", frame_start), ("End RTH", frame_end)):
+            place_landed_time_marker(context, msgid, frame=frame)
+
+        target_name = get_localized_marker_name("RTH Animation")
+        for col in used_collections:
+            if col and (
+                col.name == "RTH_Proxies" or col.name.startswith("RTH_Proxies.")
+            ):
+                col.name = target_name
+
         context.scene.brt_import_path = in_path
         self.report({"INFO"}, f"导入完成：{created} 个对象，帧范围 {frame_start}-{frame_end}")
         return {"FINISHED"}
@@ -484,7 +504,7 @@ class QuickIOCreateAndBakeProxiesOperator(Operator):
 
     def execute(self, context):
         scn = context.scene
-        drones_col_name = (getattr(scn, "sky_drones_collection", "Drones") or "Drones").strip() or "Drones"
+        drones_col = getattr(scn, "sky_drones_collection", None)
         user_prefix = (getattr(scn, "sky_proxies_collection", "RTH_Proxies") or "RTH_Proxies").strip()
         proxies_col_name = user_prefix or "RTH_Proxies"
 
@@ -506,13 +526,12 @@ class QuickIOCreateAndBakeProxiesOperator(Operator):
             self.report({"ERROR"}, f"镜像结束帧({to_f}) 不能小于开始帧({from_f})")
             return {"CANCELLED"}
 
-        col = bpy.data.collections.get(drones_col_name)
-        if not col:
-            self.report({"ERROR"}, f"集合不存在: {drones_col_name}")
+        if not drones_col:
+            self.report({"ERROR"}, "请先选择无人机")
             return {"CANCELLED"}
-        drones = [o for o in col.objects if o.type in {"MESH", "EMPTY"}]
+        drones = [o for o in drones_col.objects if o.type in {"MESH", "EMPTY"}]
         if not drones:
-            self.report({"ERROR"}, f"集合 {drones_col_name} 中未找到对象")
+            self.report({"ERROR"}, f"集合 {drones_col.name} 中未找到对象")
             return {"CANCELLED"}
         drones.sort(key=lambda o: (_numeric_suffix(o.name) or 10**9))
 
@@ -690,11 +709,15 @@ def register_quick_io_scene_properties():
     )
 
     # Skybrush 创建替身属性
-    bpy.types.Scene.sky_drones_collection = StringProperty(name="Drones集合名", default="Drones")
+    bpy.types.Scene.sky_drones_collection = PointerProperty(
+        name="无人机",
+        type=bpy.types.Collection,
+        description="选择要烘焙的无人机集合",
+    )
     bpy.types.Scene.sky_proxies_collection = StringProperty(name="替身集合名", default="RTH_Proxies")
-    bpy.types.Scene.sky_mirror_from_frame = IntProperty(name="镜像起始帧(0=起始)", default=0, min=0)
-    bpy.types.Scene.sky_mirror_to_frame = IntProperty(name="镜像结束帧(0=当前)", default=0, min=0)
-    bpy.types.Scene.sky_mirror_step = IntProperty(name="步长(帧)", default=100, min=1)
+    bpy.types.Scene.sky_mirror_from_frame = IntProperty(name="镜像起始帧", default=0, min=0)
+    bpy.types.Scene.sky_mirror_to_frame = IntProperty(name="镜像结束帧", default=0, min=0)
+    bpy.types.Scene.sky_mirror_step = IntProperty(name="步长(帧)", default=24, min=1)
     bpy.types.Scene.sky_mirror_adaptive = BoolProperty(name="自适应镜像采样", default=True)
     bpy.types.Scene.sky_mirror_max_gap = FloatProperty(name="自适应最大位移(米)", default=0.50, min=0.0)
     bpy.types.Scene.sky_mirror_max_angle = FloatProperty(name="自适应最大转角(度)", default=12.0, min=0.0, max=180.0)

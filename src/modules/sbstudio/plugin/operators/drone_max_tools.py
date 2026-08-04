@@ -12,7 +12,19 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty, St
 from bpy.types import Operator, PropertyGroup
 from bpy_extras.io_utils import ImportHelper
 
-from sbstudio.plugin.actions import iter_all_f_curves
+from sbstudio.plugin.actions import (
+    ensure_animation_data_exists_for_object,
+    ensure_f_curve_exists_for_data_path_and_index,
+    iter_all_f_curves,
+)
+from sbstudio.plugin.constants import Collections
+from sbstudio.plugin.utils.evaluator import create_position_evaluator
+from sbstudio.plugin.utils.landing_estimate import (
+    RTL_MODE_SWITCH_DELAY,
+    estimate_real_landing_duration,
+    get_localized_marker_name,
+    place_landed_time_marker,
+)
 
 __all__ = (
     "DroneMaxImageFormationProperties",
@@ -20,15 +32,20 @@ __all__ = (
     "DroneMaxSkycImportProperties",
     "DroneMaxUIState",
     "DroneMaxVertsToEmptiesProperties",
+    "DroneMaxLandingProperties",
     "DroneMaxSelectImageOperator",
     "DroneMaxGeneratePointsOperator",
     "DroneMaxGenerateEmptiesOperator",
     "DroneMaxCreateNamedEmptyOperator",
     "DroneMaxVertsToEmptiesOperator",
     "DroneMaxSkycConvertAndImportOperator",
+    "DroneMaxLandingDescendOperator",
+    "DroneMaxReadCurrentFrameToPropOperator",
     "register_drone_max_scene_properties",
     "unregister_drone_max_scene_properties",
 )
+
+LANDING_GROUP_LANDED_MARKER_MSGID = "All Drones Landed Time"
 
 
 class DroneMaxUIState(PropertyGroup):
@@ -36,6 +53,7 @@ class DroneMaxUIState(PropertyGroup):
     show_section_2: BoolProperty(name="2. 以选中物体的位置创建空物体", default=False)
     show_section_3: BoolProperty(name="3. 顶点模型转空物体纯轴", default=False)
     show_section_4: BoolProperty(name="4. SKYC 导入工具", default=False)
+    show_section_9: BoolProperty(name="9. 降落设置", default=False)
 
 
 class DroneMaxImageFormationProperties(PropertyGroup):
@@ -75,7 +93,42 @@ class DroneMaxSkycImportProperties(PropertyGroup):
     force_linear_keys: BoolProperty(name="强制线性关键帧", default=True)
     global_time_offset: FloatProperty(name="手动时间偏移 (秒)", default=0.0)
     enable_debug: BoolProperty(name="启用调试信息", default=False)
-    save_csv: BoolProperty(name="同时导出 CSV", default=True)
+    save_csv: BoolProperty(name="同时导出 CSV", default=False)
+    show_advanced: BoolProperty(name="高级选项", default=False)
+
+
+class DroneMaxLandingProperties(PropertyGroup):
+    start_frame: IntProperty(
+        name="在此帧",
+        description="下降动画开始的关键帧",
+        default=1,
+        min=0,
+    )
+    velocity_z: FloatProperty(
+        name="下降速度",
+        description="降落集合中的空物体下降到返航高度时的平均垂直速度",
+        default=2.0,
+        min=0.1,
+        soft_min=0.1,
+        soft_max=10.0,
+        unit="VELOCITY",
+    )
+    rth_altitude: FloatProperty(
+        name="返航高度",
+        description=(
+            "下降动画结束时的最低高度；动画到此结束，剩余的真实降落交由无人机"
+            "自身飞控在 RTL 模式下完成"
+        ),
+        default=5.0,
+        min=0.1,
+        soft_max=20.0,
+        unit="LENGTH",
+    )
+    scale_down_drones: BoolProperty(
+        name="无人机缩小",
+        description="降落结束时将无人机缩回 0.15 米，避免落地后穿模",
+        default=True,
+    )
 
 
 def flood_fill_points(pixels, x, y, background):
@@ -384,7 +437,7 @@ def _ensure_skyc_import_collection(context, name: str) -> bpy.types.Collection:
 
 class DroneMaxSkycConvertAndImportOperator(Operator):
     bl_idname = "dronemax.skyc_convert_import"
-    bl_label = "转换 .skyc 并导入"
+    bl_label = "导入.skyc文件"
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
@@ -435,15 +488,193 @@ class DroneMaxSkycConvertAndImportOperator(Operator):
         return {"FINISHED"}
 
 
+class DroneMaxLandingDescendOperator(Operator):
+    """将降落集合中的无人机空物体（如 RTH_1、RTH_2、RTH_3 等分层集合）沿 Z 轴
+    统一下降到指定的返航高度。
+
+    下降原理与“编队悬停测试”的整体刚体下降完全一致：集合内所有空物体以相同的
+    垂直速度同时下降，彼此的相对高度差保持不变，直到最低的空物体到达“返航
+    高度”为止，动画到此结束，剩余的真实降落交由无人机自身飞控在 RTL 模式下
+    完成。执行后会在时间轴自动放置一个本地化的“落地时间”标记，标记的估算方法
+    与编队悬停测试相同：RTL 切换后的 3 秒原地悬停，加上固件两段式降落速度
+    （1 米以上 1.3m/s，1 米及以下 0.4m/s）推算出的真实降落耗时。
+
+    下降速度、返航高度由场景中的 ``dronemax_landing_props`` 直接提供，
+    无需弹窗，操作符点击后立即执行。
+    """
+
+    bl_idname = "dronemax.landing_descend"
+    bl_label = "开始降落"
+    bl_description = (
+        "对降落集合中的无人机空物体沿 Z 轴统一下降到返航高度（原理与编队悬停测试"
+        "的刚体下降一致），并自动放置估算的落地时间标记"
+    )
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        collection = getattr(context.scene, "dronemax_landing_target_collection", None)
+        return collection is not None and len(collection.all_objects) > 0
+
+    def execute(self, context):
+        collection = context.scene.dronemax_landing_target_collection
+        if collection is None:
+            self.report({"ERROR"}, "请先选择降落集合")
+            return {"CANCELLED"}
+
+        empties = [o for o in collection.all_objects if o.type == "EMPTY"]
+        if not empties:
+            self.report({"ERROR"}, f"集合 '{collection.name}' 中未找到空物体")
+            return {"CANCELLED"}
+
+        props = context.scene.dronemax_landing_props
+        fps = context.scene.render.fps
+        start_frame = props.start_frame
+
+        # 与“编队悬停测试”的下降原理一致：所有空物体以相同的垂直速度同时下降，
+        # 相对高度差保持不变（刚体整体下降），直到最低的空物体到达“返航高度”。
+        with create_position_evaluator(context=context) as get_positions_of:
+            positions = get_positions_of(empties, frame=start_frame)
+
+        lowest_altitude = min(p[2] for p in positions)
+        descent_duration = max(0.0, lowest_altitude - props.rth_altitude) / props.velocity_z
+        end_frame = round(start_frame + descent_duration * fps)
+
+        for obj, p in zip(empties, positions, strict=True):
+            ensure_animation_data_exists_for_object(obj)
+            f_curve = ensure_f_curve_exists_for_data_path_and_index(
+                obj, data_path="location", index=2
+            )
+            final_z = p[2] - lowest_altitude + props.rth_altitude
+            for frame, value in ((start_frame, p[2]), (end_frame, final_z)):
+                keyframe = f_curve.keyframe_points.insert(
+                    frame, value, options={"FAST"}
+                )
+                keyframe.interpolation = "BEZIER"
+                keyframe.handle_left_type = "AUTO_CLAMPED"
+                keyframe.handle_right_type = "AUTO_CLAMPED"
+            f_curve.update()
+
+        if props.scale_down_drones:
+            # 除了位置替身，同时把缩放关键帧映射到真实的无人机上
+            targets = list(empties)
+            drones = Collections.find_drones(create=False)
+            if drones is not None:
+                targets.extend(drones.objects)
+            self._apply_drone_size_keyframes(targets, start_frame, end_frame)
+
+        # 将工程时间范围设为 1 至下降结束后 24 帧，方便预览完整动画。
+        context.scene.frame_start = 1
+        context.scene.frame_end = end_frame + 24
+
+        highest_final_altitude = (
+            max(p[2] for p in positions) - lowest_altitude + props.rth_altitude
+        )
+        real_landing_time = (
+            descent_duration
+            + RTL_MODE_SWITCH_DELAY
+            + estimate_real_landing_duration(highest_final_altitude)
+        )
+        place_landed_time_marker(
+            context,
+            LANDING_GROUP_LANDED_MARKER_MSGID,
+            frame=round(start_frame + real_landing_time * fps),
+        )
+
+        self.report(
+            {"INFO"},
+            f"已对集合 '{collection.name}' 中的 {len(empties)} 个空物体执行下降"
+            f"（{descent_duration:.1f}s 动画，预计 {real_landing_time:.1f}s 后全部"
+            f"落地，见 '{get_localized_marker_name(LANDING_GROUP_LANDED_MARKER_MSGID)}' 标记）",
+        )
+        return {"FINISHED"}
+
+    def _apply_drone_size_keyframes(self, objects, start_frame: int, end_frame: int):
+        """降落期间保持当前尺寸（表演时的 0.5 米），降落结束时将无人机
+        缩回 0.15 米。
+        """
+        for obj in objects:
+            current_scale = obj.scale.x
+            current_radius = max(obj.dimensions) / 2
+
+            if current_scale > 1e-6 and current_radius > 1e-6:
+                # 缩放为 1.0 时的模型半径
+                base_radius = current_radius / current_scale
+                large_scale = 0.5 / base_radius
+                small_scale = 0.15 / base_radius
+            else:
+                # 空物体没有几何尺寸，按 0.5m -> 0.15m 的比例缩小
+                large_scale = current_scale
+                small_scale = current_scale * 0.15 / 0.5
+
+            # 降落过程中保持大尺寸
+            obj.scale = (large_scale, large_scale, large_scale)
+            obj.keyframe_insert(data_path="scale", frame=start_frame)
+
+            # 降落结束时缩回 0.15 米
+            obj.scale = (small_scale, small_scale, small_scale)
+            obj.keyframe_insert(data_path="scale", frame=end_frame)
+
+            # 保持大尺寸直到最后一帧，再跳变为小尺寸
+            if obj.animation_data:
+                for fcurve in iter_all_f_curves(obj.animation_data):
+                    if fcurve.data_path == "scale":
+                        for kp in fcurve.keyframe_points:
+                            kp.interpolation = "CONSTANT"
+
+
+class DroneMaxReadCurrentFrameToPropOperator(Operator):
+    """将 Blender 时间轴的当前帧写入到目标属性中。"""
+
+    bl_idname = "dronemax.read_current_frame_to_prop"
+    bl_label = "读取当前帧"
+    bl_description = "读取时间轴当前帧并写入目标参数，保留手动输入功能"
+    bl_options = {"REGISTER", "UNDO"}
+
+    target_prop: StringProperty(
+        name="目标属性路径",
+        description="要写入当前帧的属性路径，例如 'dronemax_landing_props.start_frame' 或 'sky_mirror_from_frame'",
+        default="",
+    )
+
+    def execute(self, context):
+        scn = context.scene
+        parts = self.target_prop.split(".", 1)
+        target = scn
+        if len(parts) == 2:
+            try:
+                target = getattr(scn, parts[0])
+            except AttributeError:
+                self.report({"ERROR"}, f"目标容器 '{parts[0]}' 不存在")
+                return {"CANCELLED"}
+            prop = parts[1]
+        else:
+            prop = parts[0]
+        if not hasattr(target, prop):
+            self.report({"ERROR"}, f"目标属性 '{prop}' 不存在")
+            return {"CANCELLED"}
+        setattr(target, prop, scn.frame_current)
+        self.report({"INFO"}, f"已将当前帧 {scn.frame_current} 写入 {self.target_prop}")
+        return {"FINISHED"}
+
+
 def register_drone_max_scene_properties():
     bpy.types.Scene.dronemax_image_props = bpy.props.PointerProperty(type=DroneMaxImageFormationProperties)
     bpy.types.Scene.dronemax_named_empty_props = bpy.props.PointerProperty(type=DroneMaxNamedEmptyProperties)
     bpy.types.Scene.dronemax_v2e_props = bpy.props.PointerProperty(type=DroneMaxVertsToEmptiesProperties)
     bpy.types.Scene.dronemax_skyc_props = bpy.props.PointerProperty(type=DroneMaxSkycImportProperties)
     bpy.types.Scene.dronemax_ui_state = bpy.props.PointerProperty(type=DroneMaxUIState)
+    bpy.types.Scene.dronemax_landing_props = bpy.props.PointerProperty(type=DroneMaxLandingProperties)
+    bpy.types.Scene.dronemax_landing_target_collection = bpy.props.PointerProperty(
+        name="降落集合",
+        type=bpy.types.Collection,
+        description="待下降的无人机空物体所在的集合（例如 RTH_1、RTH_2、RTH_3 等分层集合）",
+    )
 
 
 def unregister_drone_max_scene_properties():
+    del bpy.types.Scene.dronemax_landing_target_collection
+    del bpy.types.Scene.dronemax_landing_props
     del bpy.types.Scene.dronemax_ui_state
     del bpy.types.Scene.dronemax_skyc_props
     del bpy.types.Scene.dronemax_v2e_props

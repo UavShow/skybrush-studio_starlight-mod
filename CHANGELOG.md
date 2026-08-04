@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0-sl.1.1.5]
+
+### Added
+
+- Added a "9. 降落设置" (Landing Settings) section to the bottom of the
+  "DroneMax动画辅助" panel (now at v4.3.6). Lets the user pick a target
+  collection (e.g. a "RTH_1" / "RTH_2" / "RTH_3" altitude-layer collection
+  of empties) and uniformly descend all the empties in it along the Z axis
+  down to a configurable "返航高度" (RTH altitude) at a configurable "下降
+  速度" (descent velocity). The descent uses the same rigid-body principle
+  as the "Formation Hover Test": every empty moves down at the same time
+  and speed, keeping its altitude offset relative to the others, until the
+  lowest one reaches the RTH altitude. A localized "Group Landed Time"
+  timeline marker is automatically placed at the estimated real-world
+  moment the group actually touches down (RTL mode-switch hover + the
+  firmware's two-stage descent speed profile), mirroring the "All Drones
+  Landed Time" marker added for the Formation Hover Test.
+
+### Changed
+
+- Extracted the landing-time-estimation constants and localized marker
+  helpers (previously private to the hover test operators) into a shared
+  `sbstudio.plugin.utils.landing_estimate` module so the new Landing
+  Settings operator and the hover test operators share the exact same
+  logic instead of duplicating it.
+
 ## [4.4.0-sl.1.1.4]
 
 ### Changed

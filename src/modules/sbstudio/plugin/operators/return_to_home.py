@@ -11,6 +11,7 @@ from sbstudio.model.types import Coordinate3D
 from sbstudio.plugin.actions import (
     ensure_animation_data_exists_for_object,
     ensure_f_curve_exists_for_data_path_and_index,
+    iter_all_f_curves,
 )
 from sbstudio.plugin.api import call_api_from_blender_operator
 from sbstudio.plugin.constants import Collections
@@ -153,6 +154,12 @@ class ReturnToHomeOperator(StoryboardOperator):
         options=set(),
     )
 
+    scale_down_drones = BoolProperty(
+        name="Scale Down Drones",
+        default=True,
+        description="Scale the drones back to 0.15 m at the end of the return-to-home maneuver",
+    )
+
     @classmethod
     def poll(cls, context: Context):
         if not super().poll(context):
@@ -204,6 +211,8 @@ class ReturnToHomeOperator(StoryboardOperator):
                 # === Starlight: Group selection ===
                 layout.separator()
                 layout.prop(self, "rth_group")
+
+        layout.prop(self, "scale_down_drones")
 
     def invoke(self, context, event):
         self.start_frame = max(
@@ -276,7 +285,49 @@ class ReturnToHomeOperator(StoryboardOperator):
 
         # Recalculate the transition leading to the target formation
         bpy.ops.skybrush.recalculate_transitions(scope="TO_SELECTED")
+
+        if (
+            result
+            and self.scale_down_drones
+            and not self._should_return_to_aerial_grid()
+        ):
+            last_entry = storyboard.last_entry
+            if last_entry is not None:
+                end_of_rth = last_entry.frame_end
+                self._apply_drone_size_keyframes(drones, self.start_frame, end_of_rth)
+
         return result
+
+    def _apply_drone_size_keyframes(self, drones, start_frame: int, end_frame: int):
+        """Keep the current drone size during the RTH and scale the drones
+        back to 0.15 m at the end of the maneuver.
+        """
+        for drone in drones:
+            current_scale = drone.scale.x
+            current_radius = max(drone.dimensions) / 2
+
+            if current_scale > 1e-6 and current_radius > 1e-6:
+                # Radius of the drone model at scale 1.0
+                base_radius = current_radius / current_scale
+                large_scale = 0.5 / base_radius
+                small_scale = 0.15 / base_radius
+            else:
+                large_scale = small_scale = current_scale
+
+            # Full size during the RTH flight
+            drone.scale = (large_scale, large_scale, large_scale)
+            drone.keyframe_insert(data_path="scale", frame=start_frame)
+
+            # Back to 0.15 m at the end of RTH
+            drone.scale = (small_scale, small_scale, small_scale)
+            drone.keyframe_insert(data_path="scale", frame=end_frame)
+
+            # Hold the large size until the last frame, then jump to small
+            if drone.animation_data:
+                for fcurve in iter_all_f_curves(drone.animation_data):
+                    if fcurve.data_path == "scale":
+                        for kp in fcurve.keyframe_points:
+                            kp.interpolation = "CONSTANT"
 
     def _run_base_rth(
         self,

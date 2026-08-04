@@ -7,7 +7,6 @@ from bpy.types import Context, Object
 from natsort import natsorted
 
 from sbstudio.errors import SkybrushStudioError
-from sbstudio.i18n.translations import translations_dict
 from sbstudio.plugin.actions import (
     ensure_animation_data_exists_for_object,
     ensure_f_curve_exists_for_data_path_and_index,
@@ -20,6 +19,12 @@ from sbstudio.plugin.model.storyboard import (
     get_storyboard,
 )
 from sbstudio.plugin.utils.evaluator import create_position_evaluator
+from sbstudio.plugin.utils.landing_estimate import (
+    RTL_MODE_SWITCH_DELAY,
+    estimate_real_landing_duration,
+    get_all_localized_marker_names,
+    get_localized_marker_name,
+)
 
 from .base import StoryboardOperator
 from .takeoff import create_helper_formation_for_takeoff_and_landing
@@ -30,14 +35,6 @@ __all__ = (
     "FormationHoverTestOperator",
 )
 
-# Real firmware (4.4.4) RTL landing parameters, used only to *estimate* the
-# real-world moment at which the drones actually touch down after the
-# animation ends (this part of the flight is not animated in Blender).
-RTL_MODE_SWITCH_DELAY = 3.0  # s; motionless hover right after the RTL switch
-LAND_SPEED_HIGH = 1.3  # m/s; descent speed above LAND_ALT_LOW
-LAND_SPEED_LOW = 0.4  # m/s; descent speed at/below LAND_ALT_LOW
-LAND_ALT_LOW = 1.0  # m; altitude below which the firmware switches to LAND_SPEED_LOW
-
 ALL_DRONES_LANDED_MARKER_MSGID = "All Drones Landed Time"
 
 
@@ -47,7 +44,7 @@ def _get_localized_all_drones_landed_marker_name() -> str:
     back to English if no translation is available or interface
     translation is disabled).
     """
-    return bpy.app.translations.pgettext_iface(ALL_DRONES_LANDED_MARKER_MSGID)
+    return get_localized_marker_name(ALL_DRONES_LANDED_MARKER_MSGID)
 
 
 def _get_all_localized_all_drones_landed_marker_names() -> set[str]:
@@ -56,24 +53,17 @@ def _get_all_localized_all_drones_landed_marker_names() -> set[str]:
     marker created in a previous run -- possibly under a different Blender
     language -- can still be found and replaced.
     """
-    names = {ALL_DRONES_LANDED_MARKER_MSGID}
-    for lang_dict in translations_dict.values():
-        translated = lang_dict.get(("*", ALL_DRONES_LANDED_MARKER_MSGID))
-        if translated:
-            names.add(translated)
-    return names
+    return get_all_localized_marker_names(ALL_DRONES_LANDED_MARKER_MSGID)
 
 
 def _estimate_real_landing_duration(altitude: float) -> float:
     """Estimates how long it takes, in real life, for a drone in RTL mode to
     descend from ``altitude`` (in meters) all the way to the ground, using
-    the firmware's two-stage descent speed profile (fast descent above
-    ``LAND_ALT_LOW``, slow descent at/below it). Does *not* include the
-    RTL mode-switch hover; add ``RTL_MODE_SWITCH_DELAY`` separately.
+    the firmware's two-stage descent speed profile. Thin wrapper kept for
+    backward compatibility within this module; see
+    ``sbstudio.plugin.utils.landing_estimate`` for the shared implementation.
     """
-    if altitude <= LAND_ALT_LOW:
-        return altitude / LAND_SPEED_LOW
-    return (altitude - LAND_ALT_LOW) / LAND_SPEED_HIGH + LAND_ALT_LOW / LAND_SPEED_LOW
+    return estimate_real_landing_duration(altitude)
 
 
 def _run_hover_test(

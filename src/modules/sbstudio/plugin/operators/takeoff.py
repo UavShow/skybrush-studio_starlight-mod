@@ -7,6 +7,7 @@ from bpy.types import Context
 from sbstudio.errors import SkybrushStudioError
 from sbstudio.math.nearest_neighbors import find_nearest_neighbors
 from sbstudio.plugin.api import call_api_from_blender_operator, get_api
+from sbstudio.plugin.actions import iter_all_f_curves
 from sbstudio.plugin.constants import Collections, Formations
 from sbstudio.plugin.model.formation import (
     create_formation,
@@ -304,6 +305,12 @@ class TakeoffOperator(StoryboardOperator):
         unit="LENGTH",
     )
 
+    scale_up_drones = BoolProperty(
+        name="Scale Up Drones",
+        default=True,
+        description="Scale the drones up to 0.5 m at the end of the takeoff maneuver for better light effects",
+    )
+
     @classmethod
     def poll(cls, context: Context):
         if not super().poll(context):
@@ -332,6 +339,8 @@ class TakeoffOperator(StoryboardOperator):
         if self.spacing < get_proximity_warning_threshold(context):
             row.alert = True
             row.label(text="", icon="ERROR")
+
+        layout.prop(self, "scale_up_drones")
 
         # Box array layering section
         layout.separator()
@@ -510,6 +519,8 @@ class TakeoffOperator(StoryboardOperator):
         except Exception:
             return False
 
+        if self.scale_up_drones:
+            self._apply_drone_size_keyframes(drones, self.start_frame, end_of_takeoff)
         return True
 
     def _run_batch_takeoff(self, storyboard: Storyboard, drones, context: Context) -> bool:
@@ -689,12 +700,48 @@ class TakeoffOperator(StoryboardOperator):
         except Exception:
             return False
 
+        takeoff_start = min(self.start_frame, self.batch_start_frame)
+        takeoff_end = max(end_of_box_takeoff, end_of_trad_takeoff)
+        if self.scale_up_drones:
+            self._apply_drone_size_keyframes(drones, takeoff_start, takeoff_end)
+
         self.report(
             {"INFO"},
             f"Box: {self.start_frame}->{end_of_box_takeoff} ({box_count} drones); "
             f"Trad: {self.batch_start_frame}->{end_of_trad_takeoff} ({trad_count} drones)",
         )
         return True
+
+    def _apply_drone_size_keyframes(self, drones, start_frame: int, end_frame: int):
+        """Keep the current small drone size during the takeoff grid / takeoff
+        and scale the drones up to 0.5 m at the end of takeoff.
+        """
+        for drone in drones:
+            current_scale = drone.scale.x
+            current_radius = max(drone.dimensions) / 2
+
+            if current_scale > 1e-6 and current_radius > 1e-6:
+                # Radius of the drone model at scale 1.0
+                base_radius = current_radius / current_scale
+                small_scale = 0.15 / base_radius
+                large_scale = 0.5 / base_radius
+            else:
+                small_scale = large_scale = current_scale
+
+            # Small during takeoff grid and takeoff
+            drone.scale = (small_scale, small_scale, small_scale)
+            drone.keyframe_insert(data_path="scale", frame=start_frame)
+
+            # 0.5 m from the end of takeoff
+            drone.scale = (large_scale, large_scale, large_scale)
+            drone.keyframe_insert(data_path="scale", frame=end_frame)
+
+            # Make the size hold small until the last frame, then jump to large
+            if drone.animation_data:
+                for fcurve in iter_all_f_curves(drone.animation_data):
+                    if fcurve.data_path == "scale":
+                        for kp in fcurve.keyframe_points:
+                            kp.interpolation = "CONSTANT"
 
     def _compute_targets(self, source, *, base_altitude, layer_height,
                          use_layering, scheme, spacing_x, is_traditional):

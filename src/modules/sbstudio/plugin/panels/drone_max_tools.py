@@ -114,6 +114,7 @@ class DroneMaxAnimationAssistancePanel(Panel):
             op.target_prop = "dronemax_landing_props.start_frame"
             row.prop(context.scene.dronemax_landing_props, "velocity_z")
             row.prop(context.scene.dronemax_landing_props, "rth_altitude")
+            row.prop(context.scene.dronemax_landing_props, "ramp_duration")
             box.prop(
                 context.scene.dronemax_landing_props,
                 "scale_down_drones",

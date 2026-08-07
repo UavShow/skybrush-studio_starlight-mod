@@ -106,7 +106,7 @@ class DroneMaxLandingProperties(PropertyGroup):
     )
     velocity_z: FloatProperty(
         name="下降速度",
-        description="降落集合中的空物体下降到返航高度时的平均垂直速度",
+        description="降落匀速阶段的垂直速度，也是整个下降过程中的最大目标速度",
         default=2.0,
         min=0.1,
         soft_min=0.1,
@@ -123,6 +123,18 @@ class DroneMaxLandingProperties(PropertyGroup):
         min=0.1,
         soft_max=20.0,
         unit="LENGTH",
+    )
+    ramp_duration: FloatProperty(
+        name="缓降时长",
+        description=(
+            "下降开始时从静止匀加速到目标速度、以及接近返航高度时从目标速度"
+            "匀减速到静止所需的过渡时间；设为 0 时为匀速单段下降"
+        ),
+        default=1.0,
+        min=0.0,
+        soft_min=0.0,
+        soft_max=5.0,
+        unit="TIME",
     )
     scale_down_drones: BoolProperty(
         name="无人机缩小",
@@ -537,8 +549,21 @@ class DroneMaxLandingDescendOperator(Operator):
             positions = get_positions_of(empties, frame=start_frame)
 
         lowest_altitude = min(p[2] for p in positions)
-        descent_duration = max(0.0, lowest_altitude - props.rth_altitude) / props.velocity_z
-        end_frame = round(start_frame + descent_duration * fps)
+        highest_altitude = max(p[2] for p in positions)
+        total_distance = max(0.0, lowest_altitude - props.rth_altitude)
+
+        # 使用梯形速度曲线：A-B 匀加速、B-C 匀速、C-D 匀减速。
+        # 输入的 velocity_z 作为 B-C 匀速阶段（也是全程最大）速度，
+        # ramp_duration 作为加/减速过渡时间，总动画时间 = 匀速时间 + 一段过渡时间。
+        linear_time = total_distance / props.velocity_z if props.velocity_z > 1e-6 else 0.0
+        ramp_time = min(props.ramp_duration, linear_time)
+        cruise_time = max(0.0, linear_time - ramp_time)
+        total_time = 2.0 * ramp_time + cruise_time
+
+        frame_a = start_frame
+        frame_b = round(start_frame + ramp_time * fps)
+        frame_c = round(start_frame + (ramp_time + cruise_time) * fps)
+        frame_d = round(start_frame + total_time * fps)
 
         for obj, p in zip(empties, positions, strict=True):
             ensure_animation_data_exists_for_object(obj)
@@ -546,14 +571,27 @@ class DroneMaxLandingDescendOperator(Operator):
                 obj, data_path="location", index=2
             )
             final_z = p[2] - lowest_altitude + props.rth_altitude
-            for frame, value in ((start_frame, p[2]), (end_frame, final_z)):
+
+            z_a = p[2]
+            z_b = p[2] - 0.5 * props.velocity_z * ramp_time
+            z_c = final_z + 0.5 * props.velocity_z * ramp_time
+            z_d = final_z
+
+            for frame, value, interpolation in (
+                (frame_a, z_a, "BEZIER"),  # A 初始关键帧
+                (frame_b, z_b, "LINEAR"),  # B 匀速阶段起点
+                (frame_c, z_c, "BEZIER"),  # C 匀速阶段终点
+                (frame_d, z_d, "BEZIER"),  # D 结束关键帧
+            ):
                 keyframe = f_curve.keyframe_points.insert(
                     frame, value, options={"FAST"}
                 )
-                keyframe.interpolation = "BEZIER"
+                keyframe.interpolation = interpolation
                 keyframe.handle_left_type = "AUTO_CLAMPED"
                 keyframe.handle_right_type = "AUTO_CLAMPED"
             f_curve.update()
+
+        end_frame = frame_d
 
         if props.scale_down_drones:
             # 除了位置替身，同时把缩放关键帧映射到真实的无人机上
@@ -567,11 +605,9 @@ class DroneMaxLandingDescendOperator(Operator):
         context.scene.frame_start = 1
         context.scene.frame_end = end_frame + 24
 
-        highest_final_altitude = (
-            max(p[2] for p in positions) - lowest_altitude + props.rth_altitude
-        )
+        highest_final_altitude = highest_altitude - lowest_altitude + props.rth_altitude
         real_landing_time = (
-            descent_duration
+            total_time
             + RTL_MODE_SWITCH_DELAY
             + estimate_real_landing_duration(highest_final_altitude)
         )
@@ -584,7 +620,7 @@ class DroneMaxLandingDescendOperator(Operator):
         self.report(
             {"INFO"},
             f"已对集合 '{collection.name}' 中的 {len(empties)} 个空物体执行下降"
-            f"（{descent_duration:.1f}s 动画，预计 {real_landing_time:.1f}s 后全部"
+            f"（{total_time:.1f}s 动画，预计 {real_landing_time:.1f}s 后全部"
             f"落地，见 '{get_localized_marker_name(LANDING_GROUP_LANDED_MARKER_MSGID)}' 标记）",
         )
         return {"FINISHED"}

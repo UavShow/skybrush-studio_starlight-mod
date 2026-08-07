@@ -54,7 +54,6 @@ __all__ = (
     "ColorFunctionProperties",
     "LightEffect",
     "LightEffectCollection",
-    "LightEffectMarkerMappingItem",
 )
 
 
@@ -250,32 +249,52 @@ def _storyboard_entry_or_transition_selection_update(
     self.update_from_storyboard(context, reset_offset=True)
 
 
+# Blender requires a persistent reference to the list returned by an
+# EnumProperty items callback; otherwise the returned strings may be
+# garbage collected before Blender is done using them. We keep a single
+# module-level list around and mutate it in place on every call instead of
+# returning a fresh list each time.
+_marker_mapping_items_cache: list[tuple[str, str, str]] = [("NONE", "None", "")]
+
+
+def _get_marker_mapping_items(self: LightEffect, context: Context | None):
+    """Returns the list of consecutive timeline marker pairs as enum items,
+    one item per pair of adjacent timeline markers.
+    """
+    global _marker_mapping_items_cache
+
+    items: list[tuple[str, str, str]] = []
+    if context is not None:
+        markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
+        for i in range(len(markers) - 1):
+            start, end = markers[i], markers[i + 1]
+            identifier = f"{start.frame}:{end.frame}"
+            name = f"{start.name} > {end.name}"
+            items.append((identifier, name, f"Frames {start.frame} to {end.frame}"))
+
+    if not items:
+        items = [("NONE", "None", "")]
+
+    _marker_mapping_items_cache[:] = items
+    return _marker_mapping_items_cache
+
+
 def _marker_mapping_update(self: LightEffect, context: Context | None = None) -> None:
     """Sets the start/end frames of this light effect from the selected
-    consecutive timeline marker pair stored in the marker mapping entries.
+    pair of consecutive timeline markers.
     """
-    if context is None or not self.marker_mapping:
+    if context is None or not self.marker_mapping or self.marker_mapping == "NONE":
         return
 
-    light_effects = getattr(context.scene.skybrush, "light_effects", None)
-    if light_effects is None:
+    try:
+        start_str, end_str = self.marker_mapping.split(":")
+        start_frame = int(start_str)
+        end_frame = int(end_str)
+    except ValueError:
         return
 
-    for item in light_effects.marker_mapping_entries:
-        if item.name == self.marker_mapping:
-            self.frame_start = item.start_frame
-            self.duration = max(1, item.end_frame - item.start_frame + 1)
-            return
-
-
-class LightEffectMarkerMappingItem(PropertyGroup):
-    """Blender property group representing one possible start/end marker pair
-    for a light effect.
-    """
-
-    name = StringProperty(name="Name", default="", options=set())
-    start_frame = IntProperty(name="Start Frame", default=0, options=set())
-    end_frame = IntProperty(name="End Frame", default=0, options=set())
+    self.frame_start = min(start_frame, end_frame)
+    self.duration = max(1, abs(end_frame - start_frame) + 1)
 
 
 class LightEffect(PropertyGroup):
@@ -302,13 +321,13 @@ class LightEffect(PropertyGroup):
         options=set(),
     )
 
-    marker_mapping = StringProperty(
-        name="Map from timeline markers",
+    marker_mapping = EnumProperty(
+        name="Start Marker and End Marker",
         description=(
             "Select a pair of consecutive timeline markers to derive the "
             "start and end frames of this light effect"
         ),
-        default="",
+        items=_get_marker_mapping_items,
         update=_marker_mapping_update,
         options=set(),
     )
@@ -992,7 +1011,11 @@ class LightEffect(PropertyGroup):
         """
         # UUID not copied, this is intentional
         self.enabled = other.enabled
-        self.marker_mapping = other.marker_mapping
+        try:
+            self.marker_mapping = other.marker_mapping
+        except TypeError:
+            # the marker pair no longer exists in the current scene
+            pass
         self.frame_start = other.frame_start
         self.duration = other.duration
         self.fade_in_duration = other.fade_in_duration
@@ -1036,8 +1059,12 @@ class LightEffect(PropertyGroup):
         # Hint: synchronize content of this function with self.update_from()
         if "enabled" in data:
             self.enabled = data["enabled"]
-        if "markerMapping" in data:
-            self.marker_mapping = data["markerMapping"]
+        if marker_mapping := data.get("markerMapping"):
+            try:
+                self.marker_mapping = marker_mapping
+            except TypeError:
+                # the marker pair no longer exists in the current scene
+                pass
         if frame_start := data.get("frameStart"):
             self.frame_start = frame_start
         if duration := data.get("duration"):
@@ -1251,28 +1278,11 @@ class LightEffectCollection(PropertyGroup, ListMixin[LightEffect]):
     entries = CollectionProperty(type=LightEffect)
     """The entries in the collection."""
 
-    marker_mapping_entries = CollectionProperty(type=LightEffectMarkerMappingItem)
-    """Consecutive timeline marker pairs that can be used to map light effect
-    start and end frames."""
-
     active_entry_index: int = IntProperty(
         name="Selected index",
         description="Index of the light effect currently being edited",
     )
     """Index of the active entry (currently being edited)."""
-
-    def refresh_marker_mapping_entries(self, context: Context) -> None:
-        """Re-populates the marker mapping entries from the scene timeline markers."""
-        self.marker_mapping_entries.clear()
-        markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
-        for i in range(len(markers) - 1):
-            start, end = markers[i], markers[i + 1]
-            item: LightEffectMarkerMappingItem = cast(
-                LightEffectMarkerMappingItem, self.marker_mapping_entries.add()
-            )
-            item.name = f"{start.name} > {end.name}"
-            item.start_frame = start.frame
-            item.end_frame = end.frame
 
     @property
     def active_entry(self) -> LightEffect | None:

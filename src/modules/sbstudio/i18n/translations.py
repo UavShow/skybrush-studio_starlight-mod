@@ -31969,7 +31969,7 @@ translations_dict.setdefault("zh_HANS", {}).update(
         ("*", "Layer {layer} Takeoff"): "第{layer}层起飞",
         ("*", "Hover Start"): "开始悬停",
         ("*", "Hover End, Start Descent"): "悬停结束开始下降",
-        ("*", "Map from timeline markers"): "从时间标记映射起止时间",
+        ("*", "Start Marker and End Marker"): "起始标记与结束标记",
         ("*", "Need at least two timeline markers"): "至少需要两个时间标记",
     }
 )
@@ -31988,7 +31988,7 @@ translations_dict.setdefault("ja_JP", {}).update(
         ("*", "Layer {layer} Takeoff"): "{layer}層 離陸",
         ("*", "Hover Start"): "ホバー開始",
         ("*", "Hover End, Start Descent"): "ホバー終了・降下開始",
-        ("*", "Map from timeline markers"): "タイムマーカーから開始/終了を割り当て",
+        ("*", "Start Marker and End Marker"): "開始マーカーと終了マーカー",
         ("*", "Need at least two timeline markers"): "タイムマーカーが2つ以上必要です",
     }
 )

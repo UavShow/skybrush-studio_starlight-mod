@@ -245,6 +245,37 @@ def _storyboard_entry_or_transition_selection_update(
     self.update_from_storyboard(context, reset_offset=True)
 
 
+def _use_marker_mapping_update(self: LightEffect, context: Context | None = None) -> None:
+    """When marker mapping is enabled, sets the start/end frames of this light
+    effect from the corresponding consecutive timeline markers.
+    """
+    if not self.use_marker_mapping or context is None:
+        return
+
+    light_effects = getattr(context.scene.skybrush, "light_effects", None)
+    if light_effects is None:
+        return
+
+    self_ptr = self.as_pointer()
+    index = None
+    for i, entry in enumerate(light_effects.entries):
+        if entry.as_pointer() == self_ptr:
+            index = i
+            break
+
+    if index is None:
+        return
+
+    markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
+    if index < 0 or index >= len(markers) - 1:
+        return
+
+    start_marker = markers[index]
+    end_marker = markers[index + 1]
+    self.frame_start = start_marker.frame
+    self.duration = max(1, end_marker.frame - start_marker.frame + 1)
+
+
 class LightEffect(PropertyGroup):
     """Blender property group representing a single, time- and possibly space-limited
     light effect in the drone show.
@@ -266,6 +297,17 @@ class LightEffect(PropertyGroup):
         name="Enabled",
         description="Whether this light effect is enabled",
         default=True,
+        options=set(),
+    )
+
+    use_marker_mapping = BoolProperty(
+        name="Map from timeline markers",
+        description=(
+            "When enabled, the start and end frames of this light effect are "
+            "derived from consecutive timeline markers by index"
+        ),
+        default=False,
+        update=_use_marker_mapping_update,
         options=set(),
     )
 
@@ -781,6 +823,7 @@ class LightEffect(PropertyGroup):
         # Hint: synchronize content of this function with self.update_from()
         return {
             "enabled": self.enabled,
+            "useMarkerMapping": self.use_marker_mapping,
             "frameStart": self.frame_start,
             "duration": self.duration,
             "fadeInDuration": self.fade_in_duration,
@@ -947,6 +990,7 @@ class LightEffect(PropertyGroup):
         """
         # UUID not copied, this is intentional
         self.enabled = other.enabled
+        self.use_marker_mapping = other.use_marker_mapping
         self.frame_start = other.frame_start
         self.duration = other.duration
         self.fade_in_duration = other.fade_in_duration
@@ -988,8 +1032,10 @@ class LightEffect(PropertyGroup):
 
         # Note that we do _not_ load UUID and name, this is intentional
         # Hint: synchronize content of this function with self.update_from()
-        if enabled := data.get("enabled"):
-            self.enabled = enabled
+        if "enabled" in data:
+            self.enabled = data["enabled"]
+        if "useMarkerMapping" in data:
+            self.use_marker_mapping = data["useMarkerMapping"]
         if frame_start := data.get("frameStart"):
             self.frame_start = frame_start
         if duration := data.get("duration"):

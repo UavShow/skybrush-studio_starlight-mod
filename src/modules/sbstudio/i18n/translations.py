@@ -31962,6 +31962,13 @@ translations_dict.setdefault("zh_HANS", {}).update(
         ("*", "RTH Animation"): "返航动画",
         ("*", "Scale Up Drones"): "无人机放大",
         ("*", "Scale Down Drones"): "无人机缩小",
+        ("*", "Group {group} Takeoff Start"): "{group}组开始起飞",
+        ("*", "Group {group} Hover Start"): "{group}组开始悬停",
+        ("*", "Group {group} Hover End"): "{group}组悬停结束",
+        ("*", "Group {group} Landed"): "{group}组已降落",
+        ("*", "Layer {layer} Takeoff"): "第{layer}层起飞",
+        ("*", "Hover Start"): "开始悬停",
+        ("*", "Hover End, Start Descent"): "悬停结束开始下降",
     }
 )
 
@@ -31972,6 +31979,13 @@ translations_dict.setdefault("ja_JP", {}).update(
         ("*", "RTH Animation"): "アニメーションに戻る",
         ("*", "Scale Up Drones"): "ドローン拡大",
         ("*", "Scale Down Drones"): "ドローン縮小",
+        ("*", "Group {group} Takeoff Start"): "{group}組 離陸開始",
+        ("*", "Group {group} Hover Start"): "{group}組 ホバー開始",
+        ("*", "Group {group} Hover End"): "{group}組 ホバー終了",
+        ("*", "Group {group} Landed"): "{group}組 着陸完了",
+        ("*", "Layer {layer} Takeoff"): "{layer}層 離陸",
+        ("*", "Hover Start"): "ホバー開始",
+        ("*", "Hover End, Start Descent"): "ホバー終了・降下開始",
     }
 )
 

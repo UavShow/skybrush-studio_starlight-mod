@@ -66,6 +66,24 @@ def _estimate_real_landing_duration(altitude: float) -> float:
     return estimate_real_landing_duration(altitude)
 
 
+def _place_localized_marker(context: Context, msgid: str, *, frame: int, **kwargs) -> None:
+    """Places a timeline marker named after ``msgid`` (localized to Blender's
+    current interface language) and formatted with ``kwargs`` at the given
+    ``frame``. Existing markers with the same formatted name in any known
+    language are removed first.
+    """
+    timeline_markers = context.scene.timeline_markers
+    known_names = {
+        name.format(**kwargs)
+        for name in get_all_localized_marker_names(msgid)
+    }
+    for existing in [m for m in timeline_markers if m.name in known_names]:
+        timeline_markers.remove(existing)
+    timeline_markers.new(
+        get_localized_marker_name(msgid).format(**kwargs), frame=frame
+    )
+
+
 def _run_hover_test(
     op,
     storyboard: Storyboard,
@@ -75,6 +93,7 @@ def _run_hover_test(
     slots,
     num_rounds: int,
     entry_name: str,
+    place_group_markers: bool = False,
 ) -> tuple[float, float]:
     """Shared implementation of the hover test operators.
 
@@ -185,6 +204,40 @@ def _run_hover_test(
 
     # Recalculate the transition leading to the hover test formation
     bpy.ops.skybrush.recalculate_transitions(scope="TO_SELECTED")
+
+    if place_group_markers:
+        # Place per-group timeline markers for the single box hover test.
+        for round_index in range(num_rounds):
+            group = round_index + 1
+            takeoff_start = round_index * cycle_duration
+            hover_start = takeoff_start + ascent_duration
+            hover_end = hover_start + op.hover_duration
+            landed = hover_end + descent_duration + land_duration
+
+            _place_localized_marker(
+                context,
+                "Group {group} Takeoff Start",
+                frame=round(op.start_frame + takeoff_start * fps),
+                group=group,
+            )
+            _place_localized_marker(
+                context,
+                "Group {group} Hover Start",
+                frame=round(op.start_frame + hover_start * fps),
+                group=group,
+            )
+            _place_localized_marker(
+                context,
+                "Group {group} Hover End",
+                frame=round(op.start_frame + hover_end * fps),
+                group=group,
+            )
+            _place_localized_marker(
+                context,
+                "Group {group} Landed",
+                frame=round(op.start_frame + landed * fps),
+                group=group,
+            )
 
     return cycle_duration, total_duration
 
@@ -562,6 +615,7 @@ class SingleBoxHoverTestOperator(StoryboardOperator):
             slots=slots,
             num_rounds=num_rounds,
             entry_name="Single box hover test",
+            place_group_markers=True,
         )
 
         num_boxes = int(ceil(box_count / self.drones_per_box))
@@ -581,6 +635,7 @@ def _run_formation_hover_test(
     *,
     source,
     target,
+    groups=None,
 ) -> float:
     """Shared implementation of the whole-fleet formation hover test.
 
@@ -709,6 +764,35 @@ def _run_formation_hover_test(
 
     # Recalculate the transition leading to the hover test formation
     bpy.ops.skybrush.recalculate_transitions(scope="TO_SELECTED")
+
+    if groups is not None:
+        # Place per-layer takeoff and global hover/ descent timeline markers
+        # for the formation hover test.
+        num_layers = (max(groups) + 1) if groups else 1
+        layer_takeoff_times: dict[int, float] = {}
+        for group, pre_delay in zip(groups, pre_delays):
+            if group not in layer_takeoff_times:
+                layer_takeoff_times[group] = pre_delay
+
+        for layer_index in range(num_layers):
+            if layer_index in layer_takeoff_times:
+                _place_localized_marker(
+                    context,
+                    "Layer {layer} Takeoff",
+                    frame=round(op.start_frame + layer_takeoff_times[layer_index] * fps),
+                    layer=layer_index + 1,
+                )
+
+        _place_localized_marker(
+            context,
+            "Hover Start",
+            frame=round(op.start_frame + max_ascent_duration * fps),
+        )
+        _place_localized_marker(
+            context,
+            "Hover End, Start Descent",
+            frame=round(op.start_frame + hover_end * fps),
+        )
 
     # Estimate the real-world moment at which every drone has actually
     # landed. This happens entirely after the animation ends: all drones
@@ -984,6 +1068,7 @@ class FormationHoverTestOperator(StoryboardOperator):
             context,
             source=source,
             target=target,
+            groups=groups,
         )
 
         self.report(

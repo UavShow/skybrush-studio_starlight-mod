@@ -245,25 +245,33 @@ def _storyboard_entry_or_transition_selection_update(
     self.update_from_storyboard(context, reset_offset=True)
 
 
-def _use_marker_mapping_update(self: LightEffect, context: Context | None = None) -> None:
-    """When marker mapping is enabled, sets the start/end frames of this light
-    effect from the corresponding consecutive timeline markers.
+def _get_marker_mapping_items(self: LightEffect, context: Context):
+    """Returns the list of consecutive timeline marker pairs as enum items."""
+    if context is None:
+        return [("0", "None", "")]
+
+    markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
+    if len(markers) < 2:
+        return [("0", "None", "")]
+
+    items: list[tuple[str, str, str]] = []
+    for i in range(len(markers) - 1):
+        start, end = markers[i], markers[i + 1]
+        name = f"{start.name} > {end.name}"
+        items.append((str(i), name, f"Frames {start.frame} to {end.frame}"))
+    return items
+
+
+def _marker_mapping_update(self: LightEffect, context: Context | None = None) -> None:
+    """Sets the start/end frames of this light effect from the selected
+    consecutive timeline marker pair.
     """
-    if not self.use_marker_mapping or context is None:
+    if context is None or self.marker_mapping == "NONE" or not self.marker_mapping:
         return
 
-    light_effects = getattr(context.scene.skybrush, "light_effects", None)
-    if light_effects is None:
-        return
-
-    self_ptr = self.as_pointer()
-    index = None
-    for i, entry in enumerate(light_effects.entries):
-        if entry.as_pointer() == self_ptr:
-            index = i
-            break
-
-    if index is None:
+    try:
+        index = int(self.marker_mapping)
+    except ValueError:
         return
 
     markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
@@ -300,14 +308,15 @@ class LightEffect(PropertyGroup):
         options=set(),
     )
 
-    use_marker_mapping = BoolProperty(
+    marker_mapping = EnumProperty(
         name="Map from timeline markers",
         description=(
-            "When enabled, the start and end frames of this light effect are "
-            "derived from consecutive timeline markers by index"
+            "Select a pair of consecutive timeline markers to derive the "
+            "start and end frames of this light effect"
         ),
-        default=False,
-        update=_use_marker_mapping_update,
+        items=_get_marker_mapping_items,
+        default="0",
+        update=_marker_mapping_update,
         options=set(),
     )
 
@@ -823,7 +832,7 @@ class LightEffect(PropertyGroup):
         # Hint: synchronize content of this function with self.update_from()
         return {
             "enabled": self.enabled,
-            "useMarkerMapping": self.use_marker_mapping,
+            "markerMapping": self.marker_mapping,
             "frameStart": self.frame_start,
             "duration": self.duration,
             "fadeInDuration": self.fade_in_duration,
@@ -990,7 +999,7 @@ class LightEffect(PropertyGroup):
         """
         # UUID not copied, this is intentional
         self.enabled = other.enabled
-        self.use_marker_mapping = other.use_marker_mapping
+        self.marker_mapping = other.marker_mapping
         self.frame_start = other.frame_start
         self.duration = other.duration
         self.fade_in_duration = other.fade_in_duration
@@ -1034,8 +1043,8 @@ class LightEffect(PropertyGroup):
         # Hint: synchronize content of this function with self.update_from()
         if "enabled" in data:
             self.enabled = data["enabled"]
-        if "useMarkerMapping" in data:
-            self.use_marker_mapping = data["useMarkerMapping"]
+        if "markerMapping" in data:
+            self.marker_mapping = data["markerMapping"]
         if frame_start := data.get("frameStart"):
             self.frame_start = frame_start
         if duration := data.get("duration"):

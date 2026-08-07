@@ -121,23 +121,9 @@ class LightEffectsPanel(Panel):
             )
             col.prop(
                 entry,
-                "use_marker_mapping",
+                "marker_mapping",
                 text=translate("Map from timeline markers"),
             )
-            if entry.use_marker_mapping:
-                markers = sorted(scene.timeline_markers, key=lambda m: m.frame)
-                if len(markers) >= 2:
-                    box = col.box()
-                    for i in range(len(markers) - 1):
-                        row = box.row()
-                        row.label(
-                            text=f"{markers[i].name} > {markers[i + 1].name}"
-                        )
-                else:
-                    col.label(
-                        text=translate("Need at least two timeline markers"),
-                        icon="ERROR",
-                    )
             if entry.storyboard_entry_or_transition_selection:
                 row = col.row()
                 row.prop(

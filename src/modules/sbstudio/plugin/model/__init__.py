@@ -6,7 +6,12 @@ from .formations_panel import (
 )
 from .global_settings import DroneShowAddonGlobalSettings
 from .led_control import LEDControlPanelProperties
-from .light_effects import ColorFunctionProperties, LightEffect, LightEffectCollection
+from .light_effects import (
+    ColorFunctionProperties,
+    LightEffect,
+    LightEffectCollection,
+    LightEffectMarkerMappingItem,
+)
 from .object_props import DroneShowAddonObjectProperties
 from .pyro_control import PyroControlPanelProperties
 from .pyro_control import get_overlay as get_pyro_effects_overlay
@@ -31,6 +36,7 @@ __all__ = (
     "ColorFunctionProperties",
     "LightEffect",
     "LightEffectCollection",
+    "LightEffectMarkerMappingItem",
     "PyroControlPanelProperties",
     "SafetyCheckProperties",
     "ScheduleOverride",

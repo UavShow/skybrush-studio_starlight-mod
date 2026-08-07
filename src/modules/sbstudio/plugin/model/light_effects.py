@@ -50,7 +50,12 @@ from sbstudio.plugin.light_fx_presets import get_preset_enum_items, get_preset_f
 
 from .mixins import ListMixin
 
-__all__ = ("ColorFunctionProperties", "LightEffect", "LightEffectCollection")
+__all__ = (
+    "ColorFunctionProperties",
+    "LightEffect",
+    "LightEffectCollection",
+    "LightEffectMarkerMappingItem",
+)
 
 
 def object_has_mesh_data(self, obj) -> bool:
@@ -245,43 +250,32 @@ def _storyboard_entry_or_transition_selection_update(
     self.update_from_storyboard(context, reset_offset=True)
 
 
-def _get_marker_mapping_items(self: LightEffect, context: Context):
-    """Returns the list of consecutive timeline marker pairs as enum items."""
-    if context is None:
-        return [("0", "None", "")]
-
-    markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
-    if len(markers) < 2:
-        return [("0", "None", "")]
-
-    items: list[tuple[str, str, str]] = []
-    for i in range(len(markers) - 1):
-        start, end = markers[i], markers[i + 1]
-        name = f"{start.name} > {end.name}"
-        items.append((str(i), name, f"Frames {start.frame} to {end.frame}"))
-    return items
-
-
 def _marker_mapping_update(self: LightEffect, context: Context | None = None) -> None:
     """Sets the start/end frames of this light effect from the selected
-    consecutive timeline marker pair.
+    consecutive timeline marker pair stored in the marker mapping entries.
     """
-    if context is None or self.marker_mapping == "NONE" or not self.marker_mapping:
+    if context is None or not self.marker_mapping:
         return
 
-    try:
-        index = int(self.marker_mapping)
-    except ValueError:
+    light_effects = getattr(context.scene.skybrush, "light_effects", None)
+    if light_effects is None:
         return
 
-    markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
-    if index < 0 or index >= len(markers) - 1:
-        return
+    for item in light_effects.marker_mapping_entries:
+        if item.name == self.marker_mapping:
+            self.frame_start = item.start_frame
+            self.duration = max(1, item.end_frame - item.start_frame + 1)
+            return
 
-    start_marker = markers[index]
-    end_marker = markers[index + 1]
-    self.frame_start = start_marker.frame
-    self.duration = max(1, end_marker.frame - start_marker.frame + 1)
+
+class LightEffectMarkerMappingItem(PropertyGroup):
+    """Blender property group representing one possible start/end marker pair
+    for a light effect.
+    """
+
+    name = StringProperty(name="Name", default="", options=set())
+    start_frame = IntProperty(name="Start Frame", default=0, options=set())
+    end_frame = IntProperty(name="End Frame", default=0, options=set())
 
 
 class LightEffect(PropertyGroup):
@@ -308,14 +302,13 @@ class LightEffect(PropertyGroup):
         options=set(),
     )
 
-    marker_mapping = EnumProperty(
+    marker_mapping = StringProperty(
         name="Map from timeline markers",
         description=(
             "Select a pair of consecutive timeline markers to derive the "
             "start and end frames of this light effect"
         ),
-        items=_get_marker_mapping_items,
-        default="0",
+        default="",
         update=_marker_mapping_update,
         options=set(),
     )
@@ -1258,11 +1251,28 @@ class LightEffectCollection(PropertyGroup, ListMixin[LightEffect]):
     entries = CollectionProperty(type=LightEffect)
     """The entries in the collection."""
 
+    marker_mapping_entries = CollectionProperty(type=LightEffectMarkerMappingItem)
+    """Consecutive timeline marker pairs that can be used to map light effect
+    start and end frames."""
+
     active_entry_index: int = IntProperty(
         name="Selected index",
         description="Index of the light effect currently being edited",
     )
     """Index of the active entry (currently being edited)."""
+
+    def refresh_marker_mapping_entries(self, context: Context) -> None:
+        """Re-populates the marker mapping entries from the scene timeline markers."""
+        self.marker_mapping_entries.clear()
+        markers = sorted(context.scene.timeline_markers, key=lambda m: m.frame)
+        for i in range(len(markers) - 1):
+            start, end = markers[i], markers[i + 1]
+            item: LightEffectMarkerMappingItem = cast(
+                LightEffectMarkerMappingItem, self.marker_mapping_entries.add()
+            )
+            item.name = f"{start.name} > {end.name}"
+            item.start_frame = start.frame
+            item.end_frame = end.frame
 
     @property
     def active_entry(self) -> LightEffect | None:

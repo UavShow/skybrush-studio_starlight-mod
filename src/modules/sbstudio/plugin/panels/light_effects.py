@@ -119,9 +119,12 @@ class LightEffectsPanel(Panel):
                 "entries_or_transitions",
                 text="Attach to",
             )
-            col.prop(
+            light_effects.refresh_marker_mapping_entries(context)
+            col.prop_search(
                 entry,
                 "marker_mapping",
+                light_effects,
+                "marker_mapping_entries",
                 text=translate("Map from timeline markers"),
             )
             if entry.storyboard_entry_or_transition_selection:

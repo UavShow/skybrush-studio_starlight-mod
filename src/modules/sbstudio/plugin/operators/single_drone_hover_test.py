@@ -56,6 +56,75 @@ def _get_all_localized_all_drones_landed_marker_names() -> set[str]:
     return get_all_localized_marker_names(ALL_DRONES_LANDED_MARKER_MSGID)
 
 
+def _trapezoidal_ascent_duration(distance: float, velocity: float, ramp_time: float) -> float:
+    """Returns the total duration of a vertical ascent of the given
+    ``distance``, using a trapezoidal velocity profile: ease-in for
+    ``ramp_time`` seconds, cruise at ``velocity``, then ease-out for
+    ``ramp_time`` seconds (clamped so that the ramp phases never exceed the
+    time a purely linear ascent would take).
+    """
+    if velocity <= 1e-9:
+        return 0.0
+    linear_time = distance / velocity
+    ramp_time = max(0.0, min(ramp_time, linear_time))
+    cruise_time = max(0.0, linear_time - ramp_time)
+    return 2 * ramp_time + cruise_time
+
+
+def _append_trapezoidal_ascent_points(
+    path_points: list,
+    t0: float,
+    p,
+    target_z: float,
+    velocity: float,
+    ramp_time: float,
+) -> float:
+    """Appends keyframe points (each tagged with the interpolation type of
+    its outgoing segment) to ``path_points`` describing a vertical ascent
+    from ``p``'s current altitude to ``target_z``, starting at time ``t0``.
+
+    Uses a trapezoidal velocity profile (ease-in, cruise, ease-out) when
+    ``ramp_time`` is positive; falls back to a single constant-velocity
+    segment when ``ramp_time`` is zero.
+
+    Returns:
+        the total duration of the ascent, in seconds
+    """
+    distance = target_z - p[2]
+    linear_time = distance / velocity if velocity > 1e-9 else 0.0
+    ramp_time = max(0.0, min(ramp_time, linear_time))
+    cruise_time = max(0.0, linear_time - ramp_time)
+    duration = 2 * ramp_time + cruise_time
+
+    if ramp_time > 1e-6:
+        path_points.append((t0, p[0], p[1], p[2], "BEZIER"))
+        if cruise_time > 1e-6:
+            path_points.append(
+                (
+                    t0 + ramp_time,
+                    p[0],
+                    p[1],
+                    p[2] + 0.5 * velocity * ramp_time,
+                    "LINEAR",
+                )
+            )
+            path_points.append(
+                (
+                    t0 + ramp_time + cruise_time,
+                    p[0],
+                    p[1],
+                    target_z - 0.5 * velocity * ramp_time,
+                    "BEZIER",
+                )
+            )
+        path_points.append((t0 + duration, p[0], p[1], target_z, "BEZIER"))
+    else:
+        path_points.append((t0, p[0], p[1], p[2], "LINEAR"))
+        path_points.append((t0 + duration, p[0], p[1], target_z, "LINEAR"))
+
+    return duration
+
+
 def _estimate_real_landing_duration(altitude: float) -> float:
     """Estimates how long it takes, in real life, for a drone in RTL mode to
     descend from ``altitude`` (in meters) all the way to the ground, using
@@ -111,9 +180,10 @@ def _run_hover_test(
         the duration of one cycle and the total duration, in seconds
     """
     fps = context.scene.render.fps
+    ramp_time = getattr(op, "ramp_duration", 0.0)
 
     # Phase durations in seconds
-    ascent_duration = op.altitude / op.velocity
+    ascent_duration = _trapezoidal_ascent_duration(op.altitude, op.velocity, ramp_time)
     descent_altitude = min(op.rth_altitude, op.altitude)
     descent_duration = (op.altitude - descent_altitude) / op.velocity_z
     land_speed = min(op.velocity_z, 0.5)
@@ -161,8 +231,8 @@ def _run_hover_test(
         path_points = []
         if slot is None:
             # This drone does not participate; stay on the ground
-            path_points.append((0, p[0], p[1], p[2]))
-            path_points.append((total_duration, p[0], p[1], p[2]))
+            path_points.append((0, p[0], p[1], p[2], "LINEAR"))
+            path_points.append((total_duration, p[0], p[1], p[2], "LINEAR"))
         else:
             takeoff_time = slot * cycle_duration
             hover_end = takeoff_time + ascent_duration + op.hover_duration
@@ -170,23 +240,27 @@ def _run_hover_test(
 
             if takeoff_time > 0:
                 # Stay on the ground until it is this drone's turn
-                path_points.append((0, p[0], p[1], p[2]))
-            path_points.append((takeoff_time, p[0], p[1], p[2]))
-            # Ascend to the hover altitude
-            path_points.append(
-                (takeoff_time + ascent_duration, p[0], p[1], p[2] + op.altitude)
+                path_points.append((0, p[0], p[1], p[2], "LINEAR"))
+            # Ascend to the hover altitude (ease-in, cruise, ease-out)
+            _append_trapezoidal_ascent_points(
+                path_points,
+                takeoff_time,
+                p,
+                p[2] + op.altitude,
+                op.velocity,
+                ramp_time,
             )
             # Hover
-            path_points.append((hover_end, p[0], p[1], p[2] + op.altitude))
+            path_points.append((hover_end, p[0], p[1], p[2] + op.altitude, "LINEAR"))
             # Smart-RTH-like descent to the RTH altitude
             path_points.append(
-                (hover_end + descent_duration, p[0], p[1], p[2] + descent_altitude)
+                (hover_end + descent_duration, p[0], p[1], p[2] + descent_altitude, "LINEAR")
             )
             # Slow landing from the RTH altitude to the ground
-            path_points.append((landed_time, p[0], p[1], p[2]))
+            path_points.append((landed_time, p[0], p[1], p[2], "LINEAR"))
             if landed_time < total_duration:
                 # Stay on the ground for the rest of the test
-                path_points.append((total_duration, p[0], p[1], p[2]))
+                path_points.append((total_duration, p[0], p[1], p[2], "LINEAR"))
 
         for point in path_points:
             frame = round(op.start_frame + point[0] * fps)
@@ -196,7 +270,10 @@ def _run_hover_test(
                 insert[2](frame, point[3]),
             )
             for keyframe in keyframes:
-                keyframe.interpolation = "LINEAR"
+                keyframe.interpolation = point[4]
+                if point[4] == "BEZIER":
+                    keyframe.handle_left_type = "AUTO_CLAMPED"
+                    keyframe.handle_right_type = "AUTO_CLAMPED"
 
         # Commit the insertions that we've made in "fast" mode
         for f_curve in f_curves:
@@ -289,15 +366,30 @@ class SingleDroneHoverTestOperator(StoryboardOperator):
     hover_duration = FloatProperty(
         name="Hover Duration (s)",
         description="Time each drone hovers at the test altitude before returning home",
-        default=10,
+        default=30,
         min=1,
         soft_max=120,
+    )
+
+    ramp_duration = FloatProperty(
+        name="Ramp Duration (s)",
+        description=(
+            "Time it takes for the drone to accelerate from a standstill to "
+            "the target ascent velocity, and to decelerate back to a "
+            "standstill on arrival at the hover altitude; set to 0 for a "
+            "single constant-velocity takeoff"
+        ),
+        default=1.0,
+        min=0.0,
+        soft_min=0.0,
+        soft_max=5.0,
+        unit="TIME",
     )
 
     velocity_z = FloatProperty(
         name="Descent Velocity",
         description="Average vertical velocity while the drone descends to the RTH altitude",
-        default=2,
+        default=1.5,
         min=0.1,
         soft_min=0.1,
         soft_max=10,
@@ -321,7 +413,7 @@ class SingleDroneHoverTestOperator(StoryboardOperator):
         description=(
             "Time to wait after a drone has landed before the next drone takes off"
         ),
-        default=5,
+        default=20,
         min=0,
         soft_max=60,
     )
@@ -341,6 +433,7 @@ class SingleDroneHoverTestOperator(StoryboardOperator):
         layout.prop(self, "start_frame")
         layout.prop(self, "velocity")
         layout.prop(self, "altitude")
+        layout.prop(self, "ramp_duration")
         layout.prop(self, "hover_duration")
         layout.separator()
         layout.prop(self, "velocity_z")
@@ -464,15 +557,30 @@ class SingleBoxHoverTestOperator(StoryboardOperator):
     hover_duration = FloatProperty(
         name="Hover Duration (s)",
         description="Time each drone hovers at the test altitude before returning home",
-        default=10,
+        default=30,
         min=1,
         soft_max=120,
+    )
+
+    ramp_duration = FloatProperty(
+        name="Ramp Duration (s)",
+        description=(
+            "Time it takes for the drone to accelerate from a standstill to "
+            "the target ascent velocity, and to decelerate back to a "
+            "standstill on arrival at the hover altitude; set to 0 for a "
+            "single constant-velocity takeoff"
+        ),
+        default=1.0,
+        min=0.0,
+        soft_min=0.0,
+        soft_max=5.0,
+        unit="TIME",
     )
 
     velocity_z = FloatProperty(
         name="Descent Velocity",
         description="Average vertical velocity while the drone descends to the RTH altitude",
-        default=2,
+        default=1.5,
         min=0.1,
         soft_min=0.1,
         soft_max=10,
@@ -485,7 +593,7 @@ class SingleBoxHoverTestOperator(StoryboardOperator):
             "Altitude of the smart RTH phase; the drone descends quickly to "
             "this altitude, then lands slowly from here to the ground"
         ),
-        default=1,
+        default=1.5,
         min=0.1,
         soft_max=10,
         unit="LENGTH",
@@ -497,7 +605,7 @@ class SingleBoxHoverTestOperator(StoryboardOperator):
             "Time to wait after a round of drones has landed before the next "
             "round takes off"
         ),
-        default=5,
+        default=20,
         min=0,
         soft_max=60,
     )
@@ -525,6 +633,7 @@ class SingleBoxHoverTestOperator(StoryboardOperator):
         layout.prop(self, "start_frame")
         layout.prop(self, "velocity")
         layout.prop(self, "altitude")
+        layout.prop(self, "ramp_duration")
         layout.prop(self, "hover_duration")
         layout.separator()
         layout.prop(self, "velocity_z")
@@ -677,13 +786,15 @@ def _run_formation_hover_test(
         landed, both in seconds
     """
     fps = context.scene.render.fps
+    ramp_time = getattr(op, "ramp_duration", 0.0)
 
     # Compute how long each drone's own climb would take, then synchronize
     # the arrival at the hover altitude across the whole fleet: drones with
     # a shorter climb get a pre-departure delay so that everyone reaches
     # their own hover altitude at the same time (max_ascent_duration).
     raw_ascent_durations = [
-        max(0.0, t[2] - p[2]) / op.velocity for p, t in zip(source, target, strict=True)
+        _trapezoidal_ascent_duration(max(0.0, t[2] - p[2]), op.velocity, ramp_time)
+        for p, t in zip(source, target, strict=True)
     ]
     max_ascent_duration = max(raw_ascent_durations) if raw_ascent_durations else 0.0
     pre_delays = [max_ascent_duration - d for d in raw_ascent_durations]
@@ -740,13 +851,14 @@ def _run_formation_hover_test(
         # op.rth_altitude plus that offset.
         final_altitude = t[2] - lowest_layer_altitude + op.rth_altitude
 
-        path_points = [(0, p[0], p[1], p[2])]
-        if pre_delay > 1e-6:
-            # Stay on the ground until it is this drone's turn to depart
-            path_points.append((pre_delay, p[0], p[1], p[2]))
-        path_points.append((max_ascent_duration, p[0], p[1], t[2]))
-        path_points.append((hover_end, p[0], p[1], t[2]))
-        path_points.append((descent_end, p[0], p[1], final_altitude))
+        path_points = [(0, p[0], p[1], p[2], "LINEAR")]
+        # Ascend to the hover altitude (ease-in, cruise, ease-out), departing
+        # at pre_delay so that every drone arrives at max_ascent_duration
+        _append_trapezoidal_ascent_points(
+            path_points, pre_delay, p, t[2], op.velocity, ramp_time
+        )
+        path_points.append((hover_end, p[0], p[1], t[2], "LINEAR"))
+        path_points.append((descent_end, p[0], p[1], final_altitude, "LINEAR"))
 
         for point in path_points:
             frame = round(op.start_frame + point[0] * fps)
@@ -756,7 +868,10 @@ def _run_formation_hover_test(
                 insert[2](frame, point[3]),
             )
             for keyframe in keyframes:
-                keyframe.interpolation = "LINEAR"
+                keyframe.interpolation = point[4]
+                if point[4] == "BEZIER":
+                    keyframe.handle_left_type = "AUTO_CLAMPED"
+                    keyframe.handle_right_type = "AUTO_CLAMPED"
 
         # Commit the insertions that we've made in "fast" mode
         for f_curve in f_curves:
@@ -941,10 +1056,25 @@ class FormationHoverTestOperator(StoryboardOperator):
         soft_max=120,
     )
 
+    ramp_duration = FloatProperty(
+        name="Ramp Duration (s)",
+        description=(
+            "Time it takes for the fleet to accelerate from a standstill to "
+            "the target ascent velocity, and to decelerate back to a "
+            "standstill on arrival at the hover altitude; set to 0 for a "
+            "single constant-velocity takeoff"
+        ),
+        default=1.0,
+        min=0.0,
+        soft_min=0.0,
+        soft_max=5.0,
+        unit="TIME",
+    )
+
     velocity_z = FloatProperty(
         name="Descent Velocity",
         description="Average vertical velocity while the fleet descends to the RTH altitude",
-        default=2,
+        default=1,
         min=0.1,
         soft_min=0.1,
         soft_max=10,
@@ -998,6 +1128,7 @@ class FormationHoverTestOperator(StoryboardOperator):
         else:
             box.prop(self, "traditional_layer_scheme")
         layout.separator()
+        layout.prop(self, "ramp_duration")
         layout.prop(self, "hover_duration")
         layout.prop(self, "velocity_z")
         layout.prop(self, "rth_altitude")

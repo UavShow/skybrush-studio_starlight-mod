@@ -8,6 +8,7 @@ from .add_markers_from_zipped_dss import AddMarkersFromZippedDSSOperator
 from .append_formation_to_storyboard import AppendFormationToStoryboardOperator
 from .apply_color import ApplyColorsToSelectedDronesOperator
 from .create_formation import CreateFormationOperator
+from .create_global_light_effect import CreateOrSelectGlobalLightEffectOperator
 from .create_light_effect import CreateLightEffectOperator
 from .create_new_schedule_override_entry import CreateNewScheduleOverrideEntryOperator
 from .create_new_storyboard_entry import CreateNewStoryboardEntryOperator
@@ -122,6 +123,7 @@ __all__ = (
     "ApplyColorsToSelectedDronesOperator",
     "ApplyGridLayoutOperator",
     "CreateFormationOperator",
+    "CreateOrSelectGlobalLightEffectOperator",
     "CreateLightEffectOperator",
     "CreateNewScheduleOverrideEntryOperator",
     "CreateNewStoryboardEntryOperator",

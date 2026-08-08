@@ -45,6 +45,19 @@ class ImportLightEffectsOperator(LightEffectOperator, ImportHelper):
             light_effect = light_effects.append_new_entry(name)
             warnings.extend(light_effect.update_from_dict(entry))
 
+            if light_effect.is_global_transition and any(
+                other.is_global_transition
+                for other in light_effects.entries
+                if other != light_effect
+            ):
+                # Only one global transition light effect is allowed; keep
+                # the one that already existed and demote the imported one
+                light_effect.is_global_transition = False
+                warnings.append(
+                    f'"{name}" was marked as the global transition light effect, '
+                    "but one already exists; imported as a regular light effect instead"
+                )
+
         if warnings:
             if len(warnings) > 1:
                 more = len(warnings) - 1

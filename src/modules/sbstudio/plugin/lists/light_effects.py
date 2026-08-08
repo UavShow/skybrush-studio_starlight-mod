@@ -38,6 +38,9 @@ class SKYBRUSH_UL_lightfxlist(UIList):
             checkbox = "CHECKBOX_HLT" if item.enabled else "CHECKBOX_DEHLT"
             row.prop(item, "enabled", emboss=False, text="", icon=checkbox)
 
+            if item.is_global_transition:
+                row.label(text="", translate=False, icon="WORLD")
+
             row.prop(item, "name", text="", emboss=False)
 
             if item.contains_frame(frame):

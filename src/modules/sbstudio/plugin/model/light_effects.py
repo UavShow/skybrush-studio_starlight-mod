@@ -26,6 +26,7 @@ from bpy.types import (
     Mesh,
     Object,
     PropertyGroup,
+    Scene,
     Texture,
 )
 from mathutils import Vector
@@ -311,6 +312,17 @@ class LightEffect(PropertyGroup):
             "throughout the lifetime of the entry."
         ),
         default="",
+        options={"HIDDEN"},
+    )
+
+    is_global_transition = BoolProperty(
+        name="Global Transition Light Effect",
+        description=(
+            "Marks this light effect as the unique global transition light "
+            "effect that is automatically applied to any part of the "
+            "timeline that is not covered by another light effect"
+        ),
+        default=False,
         options={"HIDDEN"},
     )
 
@@ -844,6 +856,7 @@ class LightEffect(PropertyGroup):
         # Hint: synchronize content of this function with self.update_from()
         return {
             "enabled": self.enabled,
+            "isGlobalTransition": self.is_global_transition,
             "markerMapping": self.marker_mapping,
             "frameStart": self.frame_start,
             "duration": self.duration,
@@ -1059,6 +1072,8 @@ class LightEffect(PropertyGroup):
         # Hint: synchronize content of this function with self.update_from()
         if "enabled" in data:
             self.enabled = data["enabled"]
+        if "isGlobalTransition" in data:
+            self.is_global_transition = bool(data["isGlobalTransition"])
         if marker_mapping := data.get("markerMapping"):
             try:
                 self.marker_mapping = marker_mapping
@@ -1427,15 +1442,108 @@ class LightEffectCollection(PropertyGroup, ListMixin[LightEffect]):
                 return index
         return -1
 
-    def iter_active_effects_in_frame(self, frame: int) -> Iterable[LightEffect]:
+    @property
+    def global_transition_entry(self) -> LightEffect | None:
+        """Returns the unique global transition light effect entry, or
+        `None` if it does not exist yet.
+        """
+        for entry in self.entries:
+            if entry.is_global_transition:
+                return entry
+        return None
+
+    @with_context
+    def get_or_create_global_transition_entry(
+        self,
+        *,
+        select: bool = False,
+        context: Context | None = None,
+    ) -> LightEffect:
+        """Returns the unique global transition light effect, creating it
+        with sensible defaults if it does not exist yet.
+        """
+        entry = self.global_transition_entry
+        if entry is not None:
+            if select:
+                for index, other in enumerate(self.entries):
+                    if other == entry:
+                        self.active_entry_index = index
+                        break
+            return entry
+
+        entry = self.append_new_entry(name="全局转场灯效", select=select, context=context)
+        entry.is_global_transition = True
+        return entry
+
+    def _get_global_transition_segment(
+        self, frame: int, scene: Scene
+    ) -> tuple[int, int] | None:
+        """Determines the start and end frame of the "gap" in the timeline
+        that contains the given frame and that is not covered by any other
+        (non-global) light effect.
+
+        Returns:
+            a tuple of (segment_start, segment_end), or `None` if the given
+            frame is covered by another light effect, or falls outside of the
+            scene's playback range
+        """
+        scene_start = scene.frame_start
+        scene_end = scene.frame_end
+
+        if frame < scene_start or frame > scene_end:
+            return None
+
+        gap_start = scene_start
+        gap_end = scene_end
+
+        for other in self.entries:
+            if other.is_global_transition or not other.enabled or other.influence <= 0:
+                continue
+
+            start, end = other.frame_start, other.frame_end
+            if start > end:
+                continue
+
+            if start <= frame <= end:
+                # The frame is already covered by another light effect
+                return None
+
+            if end < frame and end + 1 > gap_start:
+                gap_start = end + 1
+            if start > frame and start - 1 < gap_end:
+                gap_end = start - 1
+
+        if gap_start > gap_end:
+            return None
+
+        return (gap_start, gap_end)
+
+    def iter_active_effects_in_frame(
+        self, frame: int, scene: Scene | None = None
+    ) -> Iterable[LightEffect]:
         """Iterates over all effects that are active in the given frame."""
         # TODO(ntamas): use an interval tree if this becomes a performance
         # bottleneck
         if not self.enabled:
             return
+
+        global_entry: LightEffect | None = None
+
         for entry in self.entries:
+            if entry.is_global_transition:
+                global_entry = entry
+                continue
             if entry.enabled and entry.influence > 0 and entry.contains_frame(frame):
                 yield entry
+
+        if global_entry is not None and global_entry.enabled and global_entry.influence > 0:
+            scene = scene or bpy.context.scene
+            segment = self._get_global_transition_segment(frame, scene)
+            if segment is not None:
+                segment_start, segment_end = segment
+                global_entry.frame_start = segment_start
+                global_entry.duration = segment_end - segment_start + 1
+                yield global_entry
 
     def _on_removing_entry(self, entry) -> bool:
         entry._remove_texture()

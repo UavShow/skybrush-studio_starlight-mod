@@ -67,7 +67,7 @@ def update_light_effects(scene: Scene, depsgraph: Depsgraph):
 
     changed = False
 
-    for effect in light_effects.iter_active_effects_in_frame(frame):
+    for effect in light_effects.iter_active_effects_in_frame(frame, scene):
         if drones is None:
             # The only allocations should be concentrated here
             drones = Collections.find_drones().objects

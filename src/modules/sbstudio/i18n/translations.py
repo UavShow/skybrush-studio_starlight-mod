@@ -31971,6 +31971,18 @@ translations_dict.setdefault("zh_HANS", {}).update(
         ("*", "Hover End, Start Descent"): "悬停结束开始下降",
         ("*", "Start Marker and End Marker"): "起始标记与结束标记",
         ("*", "Need at least two timeline markers"): "至少需要两个时间标记",
+        ("*", "Global Transition Light Effect"): "全局转场灯效",
+        (
+            "*",
+            "Creates the unique global transition light effect that is applied "
+            "automatically to any part of the timeline not covered by another "
+            "light effect, or selects it if one already exists.",
+        ): "创建唯一的全局转场灯效，它会自动应用到时间轴上未被其他灯光效果占用的区域；如果已存在，则直接选中它。",
+        (
+            "*",
+            "Automatically fills any part of the timeline not covered by "
+            "another light effect",
+        ): "自动填补时间轴上未被其他灯光效果覆盖的区域",
     }
 )
 
@@ -31990,6 +32002,19 @@ translations_dict.setdefault("ja_JP", {}).update(
         ("*", "Hover End, Start Descent"): "ホバー終了・降下開始",
         ("*", "Start Marker and End Marker"): "開始マーカーと終了マーカー",
         ("*", "Need at least two timeline markers"): "タイムマーカーが2つ以上必要です",
+        ("*", "Global Transition Light Effect"): "グローバル遷移ライトエフェクト",
+        (
+            "*",
+            "Creates the unique global transition light effect that is applied "
+            "automatically to any part of the timeline not covered by another "
+            "light effect, or selects it if one already exists.",
+        ): "他のライトエフェクトに覆われていないタイムライン部分に自動的に適用される、"
+        "唯一のグローバル遷移ライトエフェクトを作成します。既に存在する場合は選択します。",
+        (
+            "*",
+            "Automatically fills any part of the timeline not covered by "
+            "another light effect",
+        ): "他のライトエフェクトに覆われていないタイムライン部分を自動的に埋めます",
     }
 )
 

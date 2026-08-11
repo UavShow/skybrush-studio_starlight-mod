@@ -207,6 +207,12 @@ DEFAULT_BOX_PRESET = {
     "offsets": BOX_OFFSETS_VERTICAL,
 }
 
+# Physical dimensions of the actual box/case that holds the drones,
+# measured in meters. These are used to ensure the spacing between boxes
+# on the takeoff grid matches the real box size.
+BOX_PHYSICAL_WIDTH = 1.4  # 1400 mm
+BOX_PHYSICAL_HEIGHT = 0.76  # 760 mm
+
 
 def create_drone(location, *, name: str, template=None, collection=None):
     """Creates a new drone object at the given location.
@@ -321,11 +327,16 @@ def get_box_offsets(orientation):
 
 
 def compute_box_size(offsets, diameter):
-    """Compute box width and height from offsets and drone diameter."""
+    """Compute box width and height from offsets and drone diameter.
+
+    The computed size is clamped to the physical box dimensions so that
+    spacing between boxes on the takeoff grid is based on the real case
+    size (1400 mm x 760 mm by default) and never smaller than it.
+    """
     xs = [o[0] for o in offsets]
     ys = [o[1] for o in offsets]
-    width = max(xs) - min(xs) + diameter
-    height = max(ys) - min(ys) + diameter
+    width = max(max(xs) - min(xs) + diameter, BOX_PHYSICAL_WIDTH)
+    height = max(max(ys) - min(ys) + diameter, BOX_PHYSICAL_HEIGHT)
     return width, height
 
 

@@ -40,10 +40,10 @@ DEFAULT_STORYBOARD_TRANSITION_DURATION = 20
 DEFAULT_LIGHT_EFFECT_DURATION = 10
 """Default duration of newly created light effects, in seconds"""
 
-DEFAULT_INDOOR_DRONE_RADIUS = 0.1
-"""Default outdoor drone radius"""
+DEFAULT_INDOOR_DRONE_RADIUS = 0.15
+"""Default indoor drone radius"""
 
-DEFAULT_OUTDOOR_DRONE_RADIUS = 0.5
+DEFAULT_OUTDOOR_DRONE_RADIUS = 0.15
 """Default outdoor drone radius"""
 
 NUM_PYRO_CHANNELS = 6

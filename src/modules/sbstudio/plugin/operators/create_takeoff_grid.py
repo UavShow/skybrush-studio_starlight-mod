@@ -101,6 +101,8 @@ _zh_translations = {
     ("*", "Enable Mixed Mode (Single + Box)"): "启用混合模式（同时生成单机+箱式）",
     ("*", "Single/Box Array Gap"): "单机阵列与箱式阵列间距",
     ("*", "Spacing"): "间隔",
+    ("*", "Spacing Mode"): "间距模式",
+    ("*", "Spacing M..."): "间距模式",
 }
 
 _ja_translations = {
@@ -173,6 +175,8 @@ _ja_translations = {
     ("*", "Enable Mixed Mode (Single + Box)"): "ミックスモード有効（単機+ボックス）",
     ("*", "Single/Box Array Gap"): "単機/ボックス配列間隔",
     ("*", "Spacing"): "間隔",
+    ("*", "Spacing Mode"): "間隔モード",
+    ("*", "Spacing M..."): "間隔モード",
 }
 
 translations_dict = {
@@ -205,6 +209,30 @@ DEFAULT_BOX_PRESET = {
     "drones_per_box": 8,
     "layout": "2x4",  # 2 columns x 4 rows
     "offsets": BOX_OFFSETS_VERTICAL,
+}
+
+# Physical dimensions of the actual box/case, measured in meters, for the
+# vertical (2 cols x 4 rows) orientation. The X/Y spacing fields in the UI
+# are the edge-to-edge gaps added on top of these dimensions, so a spacing of
+# zero means the cases are touching each other.
+BOX_PHYSICAL_WIDTH = 0.76  # 760 mm along X
+BOX_PHYSICAL_HEIGHT = 1.4  # 1400 mm along Y
+BOX_PHYSICAL_DEPTH = 0.12  # 120 mm along Z
+
+# Offset of the real case center relative to the logical box center, measured
+# along the long axis of the case
+BOX_MESH_CENTER_OFFSET = -0.01  # -10 mm
+
+# Z coordinate where the visual box meshes are placed
+BOX_MESH_Z = -1.0
+
+# Name of the collection that holds the visual box meshes
+BOX_MESH_COLLECTION_NAME = "Boxes"
+
+# Default X/Y spacing values for each spacing mode, in meters
+DEFAULT_SPACING_BY_MODE = {
+    "BOX_EDGE": (1.0, 1.0),
+    "DRONE_CENTER": (1.5, 2.0),
 }
 
 
@@ -320,13 +348,17 @@ def get_box_offsets(orientation):
     return BOX_OFFSETS_VERTICAL
 
 
-def compute_box_size(offsets, diameter):
-    """Compute box width and height from offsets and drone diameter."""
-    xs = [o[0] for o in offsets]
-    ys = [o[1] for o in offsets]
-    width = max(xs) - min(xs) + diameter
-    height = max(ys) - min(ys) + diameter
-    return width, height
+def compute_box_size(offsets, diameter, orientation="VERTICAL"):
+    """Return the physical width (X) and height (Y) of the box/case.
+
+    The UI's X/Y spacing values are added on top of these dimensions as the
+    edge-to-edge gap between adjacent cases, so a spacing of zero places the
+    cases right next to each other. Drone offsets and diameter only affect
+    the placement of drones inside a case, not the case-to-case spacing.
+    """
+    if orientation == "HORIZONTAL":
+        return BOX_PHYSICAL_HEIGHT, BOX_PHYSICAL_WIDTH
+    return BOX_PHYSICAL_WIDTH, BOX_PHYSICAL_HEIGHT
 
 
 def build_traverse_order(rows, cols, mode):
@@ -360,6 +392,8 @@ def create_box_preset_grid(
     drone_diameter: float,
     custom_offsets=None,
     drones_per_box: int = 8,
+    box_centers_out=None,
+    spacing_mode: str = "BOX_EDGE",
 ) -> list:
     """Create takeoff grid using Starlight Box Preset logic.
 
@@ -375,6 +409,11 @@ def create_box_preset_grid(
         drone_diameter: diameter of a drone (for size computation)
         custom_offsets: optional list of (x, y) custom offsets per drone in a box
         drones_per_box: number of drones per box (default 8)
+        box_centers_out: optional list that receives the (x, y) center of every
+            generated box
+        spacing_mode: "BOX_EDGE" if the spacing values are edge-to-edge gaps
+            between the cases, or "DRONE_CENTER" if they are the distances
+            between corresponding drone centers of adjacent cases
     """
     drones_per_box = max(1, int(drones_per_box))
     num_boxes = math.ceil(box_drone_count / drones_per_box)
@@ -384,13 +423,14 @@ def create_box_preset_grid(
     else:
         offsets = get_box_offsets(box_orientation)[:drones_per_box]
 
-    box_w, box_h = compute_box_size(offsets, drone_diameter)
+    box_w, box_h = compute_box_size(offsets, drone_diameter, box_orientation)
 
     rows = box_grid_rows
     cols = box_grid_cols
 
-    center_spacing_x = box_w + box_spacing_x
-    center_spacing_y = box_h + box_spacing_y
+    center_spacing_x, center_spacing_y = box_center_spacing_from_spacing(
+        box_spacing_x, box_spacing_y, box_w, box_h, spacing_mode
+    )
 
     total_w = (cols - 1) * center_spacing_x
     total_h = (rows - 1) * center_spacing_y
@@ -408,6 +448,9 @@ def create_box_preset_grid(
         box_cx = c * center_spacing_x - total_w / 2.0 + cx
         box_cy = -(r * center_spacing_y - total_h / 2.0) + cy
 
+        if box_centers_out is not None:
+            box_centers_out.append((box_cx, box_cy))
+
         slots_in_box = min(drones_per_box, drones_remaining)
         for slot in range(slots_in_box):
             ox, oy = offsets[slot]
@@ -415,6 +458,108 @@ def create_box_preset_grid(
             drones_remaining -= 1
 
     return points
+
+
+def box_center_spacing_from_spacing(
+    spacing_x, spacing_y, box_w, box_h, spacing_mode="BOX_EDGE"
+):
+    """Convert the spacing values entered by the user into the distance between
+    the centers of adjacent boxes.
+
+    In "BOX_EDGE" mode the spacing values are the gaps between the edges of the
+    cases, in "DRONE_CENTER" mode they are the distances between corresponding
+    drone centers of adjacent cases, which is exactly the box center distance.
+    """
+    if spacing_mode == "DRONE_CENTER":
+        return spacing_x, spacing_y
+    return box_w + spacing_x, box_h + spacing_y
+
+
+def box_spacing_equivalents(spacing_x, spacing_y, orientation="VERTICAL", spacing_mode="BOX_EDGE"):
+    """Return the spacing values expressed in the other spacing mode.
+
+    Returns:
+        the (x, y) spacing pair in the mode that was *not* used for the input
+    """
+    box_w, box_h = compute_box_size(None, 0.0, orientation)
+    if spacing_mode == "DRONE_CENTER":
+        return spacing_x - box_w, spacing_y - box_h
+    return spacing_x + box_w, spacing_y + box_h
+
+
+def _find_or_create_box_mesh_collection(scene):
+    """Return the collection that holds the visual box meshes, creating it if
+    needed.
+    """
+    collection = bpy.data.collections.get(BOX_MESH_COLLECTION_NAME)
+    if collection is None:
+        collection = bpy.data.collections.new(BOX_MESH_COLLECTION_NAME)
+    if collection.name not in scene.collection.children:
+        scene.collection.children.link(collection)
+    return collection
+
+
+def _create_box_mesh_data(width, height, depth):
+    """Create a cuboid mesh datablock of the given size, centered on origin."""
+    hx, hy, hz = width / 2.0, height / 2.0, depth / 2.0
+    vertices = [
+        (-hx, -hy, -hz),
+        (hx, -hy, -hz),
+        (hx, hy, -hz),
+        (-hx, hy, -hz),
+        (-hx, -hy, hz),
+        (hx, -hy, hz),
+        (hx, hy, hz),
+        (-hx, hy, hz),
+    ]
+    faces = [
+        (0, 1, 2, 3),
+        (4, 7, 6, 5),
+        (0, 4, 5, 1),
+        (1, 5, 6, 2),
+        (2, 6, 7, 3),
+        (3, 7, 4, 0),
+    ]
+    mesh = bpy.data.meshes.new("Drone box")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    return mesh
+
+
+def create_box_meshes(scene, box_centers, orientation="VERTICAL"):
+    """Create a cuboid mesh for every box center so that the box-to-box
+    spacing can be verified visually.
+
+    Parameters:
+        scene: the scene to add the boxes to
+        box_centers: list of (x, y) centers of the logical boxes
+        orientation: "VERTICAL" or "HORIZONTAL"
+
+    Returns:
+        the list of created box objects
+    """
+    if not box_centers:
+        return []
+
+    width, height = compute_box_size(None, 0.0, orientation)
+    mesh = _create_box_mesh_data(width, height, BOX_PHYSICAL_DEPTH)
+    collection = _find_or_create_box_mesh_collection(scene)
+
+    if orientation == "HORIZONTAL":
+        offset_x, offset_y = BOX_MESH_CENTER_OFFSET, 0.0
+    else:
+        offset_x, offset_y = 0.0, BOX_MESH_CENTER_OFFSET
+
+    names = propose_names("Box {}", len(box_centers))
+    boxes = []
+    for name, (bx, by) in zip(names, box_centers):
+        box = bpy.data.objects.new(name, mesh)
+        box.location = (bx + offset_x, by + offset_y, BOX_MESH_Z)
+        box.hide_select = False
+        collection.objects.link(box)
+        boxes.append(box)
+
+    return boxes
 
 
 def export_box_preset(filepath, offsets, drones_per_box=8, layout="2x4", name="Custom"):
@@ -569,7 +714,55 @@ def _apply_grid_layout(self, context):
         self.apply_grid_layout = False
 
 
-# === Mixed Position Enum Items Callback ===
+# === Spacing Mode and Mixed Position Enum Items Callbacks ===
+
+
+def _handle_spacing_mode_change(operator, context):
+    """Reset the X/Y spacing values to the defaults of the newly selected
+    spacing mode.
+    """
+    defaults = DEFAULT_SPACING_BY_MODE.get(operator.box_spacing_mode)
+    if defaults is None:
+        return
+    operator.box_spacing_x, operator.box_spacing_y = defaults
+
+
+_spacing_mode_items_cache = {}
+
+
+def _spacing_mode_items_cb(self, context):
+    """Trilingual items callback for the box_spacing_mode EnumProperty."""
+    try:
+        locale = bpy.app.translations.locale or ""
+    except Exception:
+        locale = ""
+    if locale.startswith("zh"):
+        key = "zh"
+    elif locale.startswith("ja"):
+        key = "ja"
+    else:
+        key = "en"
+    cached = _spacing_mode_items_cache.get(key)
+    if cached is not None:
+        return cached
+    if key == "zh":
+        items = [
+            ("BOX_EDGE", "箱边缘与箱边缘间距", "X/Y 间距为相邻箱子边缘之间的距离"),
+            ("DRONE_CENTER", "无人机中心点与无人机中心点", "X/Y 间距为相邻箱子中对应无人机中心点之间的距离"),
+        ]
+    elif key == "ja":
+        items = [
+            ("BOX_EDGE", "ボックス端とボックス端の間隔", "X/Y間隔は隣接するボックスの端から端までの距離"),
+            ("DRONE_CENTER", "ドローン中心とドローン中心の間隔", "X/Y間隔は隣接するボックスの対応するドローン中心間の距離"),
+        ]
+    else:
+        items = [
+            ("BOX_EDGE", "Box Edge to Box Edge", "X/Y spacing is the gap between the edges of adjacent boxes"),
+            ("DRONE_CENTER", "Drone Center to Drone Center", "X/Y spacing is the distance between corresponding drone centers of adjacent boxes"),
+        ]
+    _spacing_mode_items_cache[key] = items
+    return items
+
 
 _mixed_position_items_cache = {}
 
@@ -839,10 +1032,17 @@ class CreateTakeoffGridOperator(Operator):
         default="ROW",
     )
 
+    box_spacing_mode = EnumProperty(
+        name="Spacing Mode",
+        description="Meaning of the X and Y spacing values",
+        items=_spacing_mode_items_cb,
+        update=_handle_spacing_mode_change,
+    )
+
     box_spacing_x = FloatProperty(
         name="X Spacing",
-        description="Spacing between boxes in X direction (edge-to-edge)",
-        default=1.0,
+        description="Spacing between boxes in X direction, interpreted according to the spacing mode",
+        default=DEFAULT_SPACING_BY_MODE["BOX_EDGE"][0],
         min=0.0,
         soft_max=50.0,
         unit="LENGTH",
@@ -850,11 +1050,26 @@ class CreateTakeoffGridOperator(Operator):
 
     box_spacing_y = FloatProperty(
         name="Y Spacing",
-        description="Spacing between boxes in Y direction (edge-to-edge)",
-        default=1.0,
+        description="Spacing between boxes in Y direction, interpreted according to the spacing mode",
+        default=DEFAULT_SPACING_BY_MODE["BOX_EDGE"][1],
         min=0.0,
         soft_max=50.0,
         unit="LENGTH",
+    )
+
+    show_spacing_report = BoolProperty(
+        name="Show Spacing Report",
+        default=False,
+        description="Show the same spacing expressed in the other spacing mode",
+    )
+
+    generate_box_meshes = BoolProperty(
+        name="Generate Box Meshes",
+        default=False,
+        description=(
+            "Also create a cuboid for every box (0.76 x 1.4 x 0.12 m at Z = -1 m) "
+            "so that the spacing between the boxes can be verified"
+        ),
     )
 
     show_box_params = BoolProperty(
@@ -978,6 +1193,35 @@ class CreateTakeoffGridOperator(Operator):
         """Return True if Blender's current language is Chinese."""
         return self._get_locale() == "zh"
 
+    def _get_spacing_report_text(self, lang="en"):
+        """Return a one-line report that expresses the current X/Y spacing in
+        the spacing mode that is *not* selected, for cross-validation.
+        """
+        other_x, other_y = box_spacing_equivalents(
+            self.box_spacing_x,
+            self.box_spacing_y,
+            self.box_orientation,
+            self.box_spacing_mode,
+        )
+
+        def _fmt(value):
+            return f"{value:.3f}".rstrip("0").rstrip(".")
+
+        if self.box_spacing_mode == "DRONE_CENTER":
+            if lang == "zh":
+                return f"箱边X轴间距 {_fmt(other_x)} 米　箱边Y轴间距 {_fmt(other_y)} 米"
+            if lang == "ja":
+                return f"ボックス端X間隔 {_fmt(other_x)} m　ボックス端Y間隔 {_fmt(other_y)} m"
+            return (
+                f"Box edge spacing: X {_fmt(other_x)} m, Y {_fmt(other_y)} m"
+            )
+
+        if lang == "zh":
+            return f"无人机中心点 X {_fmt(other_x)} 米　Y {_fmt(other_y)} 米"
+        if lang == "ja":
+            return f"ドローン中心間 X {_fmt(other_x)} m　Y {_fmt(other_y)} m"
+        return f"Drone center spacing: X {_fmt(other_x)} m, Y {_fmt(other_y)} m"
+
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
@@ -1005,6 +1249,12 @@ class CreateTakeoffGridOperator(Operator):
             "traverse": _t("布局模式", "走査モード", "Traverse Mode"),
             "x_spacing": _t("X 间距", "X間隔", "X Spacing"),
             "y_spacing": _t("Y 间距", "Y間隔", "Y Spacing"),
+            "spacing_mode": _t("间距模式", "間隔モード", "Spacing Mode"),
+            "gen_boxes": _t(
+                "生成无人机箱模型（用于测算箱间距）",
+                "ボックスモデルを生成（間隔確認用）",
+                "Generate Box Models (for spacing check)",
+            ),
             "adjust_params": _t("调整箱起预设参数", "ボックスパラメータ調整", "Adjust Box Parameters"),
             "internal_params": _t("箱体内参数", "ボックス内部パラメータ", "Box Internal Parameters"),
             "drones_per_box": _t("一箱无人机的数量", "ボックスあたりドローン数", "Drones per box"),
@@ -1104,6 +1354,8 @@ class CreateTakeoffGridOperator(Operator):
             box.prop(self, "box_traverse", text=L["traverse"])
 
             box.separator()
+            box.prop(self, "box_spacing_mode", text="")
+
             row = box.row()
             sub1 = row.row(align=True)
             sub1.alignment = 'LEFT'
@@ -1116,6 +1368,18 @@ class CreateTakeoffGridOperator(Operator):
             sub2.label(text=L["y_spacing"])
             sub2.prop(self, "box_spacing_y", text="")
             sub2.scale_x = 1.2
+            row.prop(
+                self, "show_spacing_report", text="", icon='CHECKMARK', toggle=True
+            )
+
+            if self.show_spacing_report:
+                report_row = box.row()
+                report_row.alignment = 'CENTER'
+                report_row.label(text=self._get_spacing_report_text(lang))
+                report_row.enabled = False
+
+            box.separator()
+            box.prop(self, "generate_box_meshes", text=L["gen_boxes"], icon='MESH_CUBE')
 
             box.separator()
             box.prop(self, "show_box_params", toggle=True, icon='PREFERENCES', text=L["adjust_params"])
@@ -1211,7 +1475,7 @@ class CreateTakeoffGridOperator(Operator):
             )[: self.drones]
             return list(pts)
 
-        def _generate_box_points(center_x, center_y):
+        def _generate_box_points(center_x, center_y, box_centers_out=None):
             """Generate box preset grid centered at (center_x, center_y)."""
             custom_offsets = None
             drones_per_box_use = self.drones_per_box
@@ -1238,6 +1502,8 @@ class CreateTakeoffGridOperator(Operator):
                 drone_diameter=drone_diameter,
                 custom_offsets=custom_offsets,
                 drones_per_box=drones_per_box_use,
+                box_centers_out=box_centers_out,
+                spacing_mode=self.box_spacing_mode,
             )
 
         def _bounding_size(pts):
@@ -1251,6 +1517,7 @@ class CreateTakeoffGridOperator(Operator):
             )
 
         scene = context.scene
+        box_centers = []
         scene["sb_mixed_box_count"] = 0
         scene["sb_mixed_trad_count"] = 0
         scene["sb_grid_rows"] = int(self.rows)
@@ -1262,11 +1529,12 @@ class CreateTakeoffGridOperator(Operator):
             scene["sb_mixed_trad_count"] = len(points)
         elif not self.use_mixed_mode:
             # Advanced mode: box preset only
-            points = _generate_box_points(cx, cy)
+            points = _generate_box_points(cx, cy, box_centers)
             scene["sb_mixed_box_count"] = len(points)
         else:
             # Mixed mode: box + traditional
-            box_pts_local = _generate_box_points(0.0, 0.0)
+            box_centers_local = []
+            box_pts_local = _generate_box_points(0.0, 0.0, box_centers_local)
             trad_pts_local = _generate_traditional_points(0.0, 0.0)
 
             box_w, box_h = _bounding_size(box_pts_local)
@@ -1296,6 +1564,9 @@ class CreateTakeoffGridOperator(Operator):
             box_pts = [(p[0] + cx + box_dx, p[1] + cy + box_dy, p[2]) for p in box_pts_local]
             trad_pts = [(p[0] + cx + trad_dx, p[1] + cy + trad_dy, p[2]) for p in trad_pts_local]
             points = list(box_pts) + list(trad_pts)
+            box_centers = [
+                (bx + cx + box_dx, by + cy + box_dy) for bx, by in box_centers_local
+            ]
             scene["sb_mixed_box_count"] = len(box_pts)
             scene["sb_mixed_trad_count"] = len(trad_pts)
 
@@ -1345,6 +1616,11 @@ class CreateTakeoffGridOperator(Operator):
         select_only(drones)
 
         enable_bloom_effect_if_needed()
+
+        # Optionally create a cuboid for every box so that the spacing between
+        # the boxes can be verified visually
+        if self.use_advanced_settings and self.generate_box_meshes:
+            create_box_meshes(scene, box_centers, self.box_orientation)
 
         # Add a new storyboard entry with the initial formation if there is no
         # takeoff grid yet, or extend the existing grid with the new set of

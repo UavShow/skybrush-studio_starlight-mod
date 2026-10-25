@@ -20,6 +20,7 @@ Blender version 4.5.3 or higher is recommended.
 * **厂商高度定制**：第三方用户（如大漠大、高巨创新等）可根据自定义箱内布局标定并高效复用。
 * **混飞分层预设**：新增单机与箱式阵列的起飞分层模版，轻松实现两种不同品类无人机混飞。
 * **分组延迟起飞**：实现不同机型分组同时起飞或设定特定组别延迟起飞。
+* **返回空中矩阵（直达）**：为无人机规划避障返航轨迹，使其回到各自起飞点上方的分层空中矩阵，并可继续下降落地。
 * **革命性灯效管理**：内置 66 种炫酷灯效，并彻底解决原版跨平台（Win/Mac）协同导致的灯效脚本失效问题。
 * **国际化支持**：所有新功能均适配动态翻译，支持中、英、日三语。
 * 插件下载地址：https://github.com/UavShow/skybrush-studio_starlight-mod/releases
@@ -53,6 +54,7 @@ Enhanced Blender plugin based on official [Studio 4.4.0](https://github.com/skyb
 * **Third-Party Customization**: Manufacturers like dmduav, HighGreat, and others can calibrate custom layouts for efficient reuse.
 * **Mixed Fleet Presets**: Layered templates for mixing box and single-unit drone types in a single performance.
 * **Grouped & Delayed Takeoff**: Advanced control for simultaneous or delayed launches based on groups.
+* **Return to Aerial Grid (Direct)**: Plan collision-aware return paths to each drone's takeoff XY position in a layered aerial grid, with an optional descent to landing.
 * **Revolutionary Effects Sync**: 66 built-in effects and a total fix for cross-platform (Win/Mac) effect script library synchronization issues.
 * **International Support**: All new features are dynamically translated into English, Chinese, and Japanese.
 * Plugin download address：https://github.com/UavShow/skybrush-studio_starlight-mod/releases
@@ -71,6 +73,7 @@ Enhanced Blender plugin based on official [Studio 4.4.0](https://github.com/skyb
 * **サードパーティのカスタマイズ**: dmduav、HighGreat など、メーカーごとのレイアウトをキャリブレーションして効率的に再利用。
 * **混合フリートプリセット**: ボックスアレイと単体アレイの異なる機種が混在するパフォーマンスのための離陸レイヤーをサポート。
 * **グループ遅延離陸**: グループごとの同時離陸または遅延離陸を実現。
+* **空中グリッドへのダイレクト帰還**: 衝突を避けながら各ドローンを離陸位置上空の階層グリッドへ戻し、その後の降下にも対応。
 * **革命的なエフェクト同期**: 66 種類のエフェクトを内蔵。Win と Mac の間でプロジェクトを移動しても、エフェクトスクリプトが失われる問題を解消。
 * **多言語サポート**: すべての新機能は、中国語、英語、日本語の動的翻訳に対応。
 * プラグインのダウンロードURL：https://github.com/UavShow/skybrush-studio_starlight-mod/releases

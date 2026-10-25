@@ -54,6 +54,12 @@ class DroneShowAddonGlobalSettings(AddonPreferences):
     def draw(self, context: Context) -> None:
         layout = self.layout
 
+        website = layout.split(factor=0.18, align=True)
+        website.label(text="DroneMax Tech", translate=False)
+        website.operator(
+            "wm.url_open", text="www.dronemaxtech.com", icon="URL"
+        ).url = "https://www.dronemaxtech.com"
+
         layout.prop(self, "api_key")
         # layout.prop(self, "license_file")
         layout.prop(self, "server_url")

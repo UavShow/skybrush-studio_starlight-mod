@@ -215,7 +215,7 @@ DEFAULT_BOX_PRESET = {
 # vertical (2 cols x 4 rows) orientation. The X/Y spacing fields in the UI
 # are the edge-to-edge gaps added on top of these dimensions, so a spacing of
 # zero means the cases are touching each other.
-BOX_PHYSICAL_WIDTH = 0.76  # 760 mm along X
+BOX_PHYSICAL_WIDTH = 0.765  # 765 mm along X
 BOX_PHYSICAL_HEIGHT = 1.4  # 1400 mm along Y
 BOX_PHYSICAL_DEPTH = 0.12  # 120 mm along Z
 
@@ -232,7 +232,7 @@ BOX_MESH_COLLECTION_NAME = "Boxes"
 # Default X/Y spacing values for each spacing mode, in meters
 DEFAULT_SPACING_BY_MODE = {
     "BOX_EDGE": (1.0, 1.0),
-    "DRONE_CENTER": (1.5, 2.0),
+    "DRONE_CENTER": (1.7, 2.0),
 }
 
 
@@ -747,22 +747,21 @@ def _spacing_mode_items_cb(self, context):
         return cached
     if key == "zh":
         items = [
-            ("BOX_EDGE", "箱边缘与箱边缘间距", "X/Y 间距为相邻箱子边缘之间的距离"),
             ("DRONE_CENTER", "无人机中心点与无人机中心点", "X/Y 间距为相邻箱子中对应无人机中心点之间的距离"),
+            ("BOX_EDGE", "箱边缘与箱边缘间距", "X/Y 间距为相邻箱子边缘之间的距离"),
         ]
     elif key == "ja":
         items = [
-            ("BOX_EDGE", "ボックス端とボックス端の間隔", "X/Y間隔は隣接するボックスの端から端までの距離"),
             ("DRONE_CENTER", "ドローン中心とドローン中心の間隔", "X/Y間隔は隣接するボックスの対応するドローン中心間の距離"),
+            ("BOX_EDGE", "ボックス端とボックス端の間隔", "X/Y間隔は隣接するボックスの端から端までの距離"),
         ]
     else:
         items = [
-            ("BOX_EDGE", "Box Edge to Box Edge", "X/Y spacing is the gap between the edges of adjacent boxes"),
             ("DRONE_CENTER", "Drone Center to Drone Center", "X/Y spacing is the distance between corresponding drone centers of adjacent boxes"),
+            ("BOX_EDGE", "Box Edge to Box Edge", "X/Y spacing is the gap between the edges of adjacent boxes"),
         ]
     _spacing_mode_items_cache[key] = items
     return items
-
 
 _mixed_position_items_cache = {}
 
@@ -1042,7 +1041,7 @@ class CreateTakeoffGridOperator(Operator):
     box_spacing_x = FloatProperty(
         name="X Spacing",
         description="Spacing between boxes in X direction, interpreted according to the spacing mode",
-        default=DEFAULT_SPACING_BY_MODE["BOX_EDGE"][0],
+        default=DEFAULT_SPACING_BY_MODE["DRONE_CENTER"][0],
         min=0.0,
         soft_max=50.0,
         unit="LENGTH",
@@ -1051,7 +1050,7 @@ class CreateTakeoffGridOperator(Operator):
     box_spacing_y = FloatProperty(
         name="Y Spacing",
         description="Spacing between boxes in Y direction, interpreted according to the spacing mode",
-        default=DEFAULT_SPACING_BY_MODE["BOX_EDGE"][1],
+        default=DEFAULT_SPACING_BY_MODE["DRONE_CENTER"][1],
         min=0.0,
         soft_max=50.0,
         unit="LENGTH",
@@ -1067,7 +1066,7 @@ class CreateTakeoffGridOperator(Operator):
         name="Generate Box Meshes",
         default=False,
         description=(
-            "Also create a cuboid for every box (0.76 x 1.4 x 0.12 m at Z = -1 m) "
+            "Also create a cuboid for every box (0.765 x 1.4 x 0.12 m at Z = -1 m) "
             "so that the spacing between the boxes can be verified"
         ),
     )
@@ -1089,7 +1088,7 @@ class CreateTakeoffGridOperator(Operator):
     edit_box_layout_x = IntProperty(
         name="Layout X",
         description="Number of columns in box layout",
-        default=2,
+
         min=1,
         max=10,
     )

@@ -1,12 +1,12 @@
 bl_info = {
-    "name": "Skybrush Studio",
-    "author": "CollMot Robotics Ltd & PeiYi (DroneMax Tech Co Ltd.)",
-    "description": "Extends Blender with UI components for drone show design",
-    "version": (4, 4, 0),
+    "name": "Skybrush Studio Starlight Mod",
+    "author": "CollMot Robotics Ltd & PeiYi (DroneMax Tech Co Ltd.)\nliangpeiyi2016@gmail.com",
+    "description": "Extends Blender with UI components for drone show design.\nCommunity Enhanced Edition.",
+    "version": ("v4.4.0-sl.1.3.0",),
     "blender": (4, 4, 0),
     "category": "Interface",
     "doc_url": "https://doc.collmot.com/public/skybrush-studio-for-blender/latest/",
-    "tracker_url": "https://github.com/skybrush-io/studio-blender/issues",
+    "tracker_url": "https://github.com/UavShow/skybrush-studio_starlight-mod/issues",
 }
 
 __license__ = "GPLv3"
@@ -413,9 +413,13 @@ def register():
 
     Scene.skybrush = PointerProperty(type=DroneShowAddonProperties)
     Object.skybrush = PointerProperty(type=DroneShowAddonObjectProperties)
+    from sbstudio.plugin.operators.update_time_markers_from_storyboard import register_marker_language_sync
+    register_marker_language_sync()
 
 
 def unregister():
+    from sbstudio.plugin.operators.update_time_markers_from_storyboard import unregister_marker_language_sync
+    unregister_marker_language_sync()
     for getter in overlay_getters:
         overlay = getter()
         if overlay:
